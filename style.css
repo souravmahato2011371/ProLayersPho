@@ -11,3 +11,41 @@ button:active:not(:disabled) { transform: scale(.985); }
 input[type=range] { cursor: pointer; }
 .panel-note > svg { width: 15px; height: 15px; display: inline-block; vertical-align: -3px; margin-right: 5px; color: #b5aaff; }
 @media (prefers-reduced-motion: reduce) { button, a, input, .rail-tool, .icon-button, .small-button, .button, .wide-action, .layer-row, .empty-art, .brand-mark { transition: none; } }
+
+/* Core editor v1: expanded controls and touch-friendly surfaces */
+:root{--accent-soft:#29243f}
+select{font:inherit;color:var(--text);background:var(--panel-2);border:1px solid var(--border);border-radius:9px;padding:10px;width:100%;outline:none}
+select:focus-visible{outline:2px solid #b6aaff;outline-offset:2px}
+.settings-section{margin-bottom:27px}
+.settings-section+.settings-section{padding-top:21px;border-top:1px solid #2d2e37}
+.settings-section .section-label{margin-bottom:18px}
+.range-control{margin-bottom:20px}
+.range-control:last-child{margin-bottom:0}
+.range-label output{min-width:36px;text-align:right}
+.preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.preset-button{min-height:60px;text-align:left;border:1px solid var(--border);border-radius:11px;padding:10px;background:#202128;color:#d9dae4;font-size:11px;line-height:1.35;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;overflow:hidden;position:relative}
+.preset-button:before{content:"";height:19px;width:100%;position:absolute;top:0;left:0;background:linear-gradient(100deg,#7066ab,#b6a7ff 48%,#3d6f83)}
+.preset-button[data-preset="noir"]:before{background:linear-gradient(100deg,#111,#555,#ddd)}
+.preset-button[data-preset="warm"]:before{background:linear-gradient(100deg,#4a231e,#bd7444,#f3c37b)}
+.preset-button[data-preset="cool"]:before{background:linear-gradient(100deg,#132c40,#54859b,#b6d6dc)}
+.preset-button[data-preset="portrait"]:before{background:linear-gradient(100deg,#573f42,#bb8c85,#f1c5a7)}
+.preset-button[data-preset="dramatic"]:before{background:linear-gradient(100deg,#111b25,#3f5967,#b3bbbd)}
+.preset-button:hover,.preset-button.active{border-color:#8f82fa;background:#28243b}
+.preset-button span{position:relative;z-index:1;margin-top:18px}
+.compare-button[aria-pressed="true"]{border-color:#aa9cff;background:#393151;color:#fff}
+.export-settings{display:grid;gap:15px;margin-top:20px;padding-top:20px;border-top:1px solid #2d2e37}
+.panel-mini-label{display:block;font-size:11px;color:#c3c5d0;margin-bottom:8px}
+.range-help{font-size:10px;color:var(--muted);margin-top:7px;display:flex;justify-content:space-between}
+.history-actions{display:flex;gap:7px}
+.history-actions .icon-button{width:34px;height:34px}
+.canvas-stage.drag-over{outline:2px dashed #9a8cff;outline-offset:-8px;background-color:#211e31}
+.canvas-stage canvas{display:block;max-width:100%;max-height:calc(100vh - 220px);width:auto;height:auto;object-fit:contain;box-shadow:0 14px 45px #0008;border-radius:2px}
+#previewCanvas[hidden]{display:none!important}
+.layer-thumb img{display:block}
+.small-button.compare-button{border-color:#403b59;color:#d8d1ff}
+@media(max-width:650px){
+ .canvas-stage canvas{max-height:calc(100dvh - 240px)}
+ .properties-panel .panel-content{max-height:calc(55dvh - 62px);overflow:auto;padding-bottom:24px}
+ .preset-button{min-height:58px}
+ .settings-section{margin-bottom:23px}
+}
