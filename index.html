@@ -69,7 +69,7 @@
           <span class="file-hint">JPG · PNG · WEBP · other supported image formats</span>
         </div>
         <div class="image-viewport" id="imageViewport" hidden>
-          <canvas id="previewCanvas" aria-label="Edited photo preview"></canvas>
+          <div class="canvas-stack" id="canvasStack"><canvas id="previewCanvas" aria-label="Edited photo preview"></canvas><canvas id="selectionOverlay" aria-label="Area selection overlay"></canvas></div>
         </div>
       </div>
       <footer class="canvas-footer"><span id="imageDimensions">Canvas · —</span><span id="renderStatus">Edits are previewed locally</span></footer>
@@ -121,8 +121,19 @@
       </div>
       <div class="panel-content" id="layersPanel" hidden>
         <div class="section-label"><svg><use href="#i-layers"/></svg> Layers <span class="layer-count" id="layerCount">0</span></div>
+        <div class="area-editor">
+          <div class="area-editor-heading">SELECT AN AREA</div>
+          <div class="selection-tools" role="group" aria-label="Area selection tools">
+            <button class="selection-tool active" type="button" data-selection-tool="rectangle" aria-pressed="true">Rectangle</button>
+            <button class="selection-tool" type="button" data-selection-tool="ellipse" aria-pressed="false">Ellipse</button>
+            <button class="selection-tool" type="button" data-selection-tool="brush" aria-pressed="false">Brush</button>
+          </div>
+          <div class="brush-size-control"><label for="brushSize">Brush size</label><input id="brushSize" type="range" min="8" max="100" value="32"></div>
+          <div class="selection-actions"><button class="small-button" id="clearSelectionButton" type="button" disabled>Clear area</button><button class="button button-primary" id="addAreaLayerButton" type="button" disabled>+ Add area layer</button></div>
+          <p class="area-hint" id="selectionStatus">Open a photo, then draw a shape or brush over the area you want to edit.</p>
+        </div>
         <div class="layer-list" id="layerList"><div class="layer-empty">Open an image to create your first layer.</div></div>
-        <div class="panel-note">The current build supports one photo layer. Multi-image layers, blend modes and masks are part of the planned advanced editor.</div>
+        <div class="panel-note">Select an area, add a layer, then open Edit and adjust its settings. Each area layer can be edited, hidden, or removed independently.</div>
       </div>
       <div class="panel-content" id="transformPanel" hidden>
         <div class="section-label"><svg><use href="#i-move"/></svg> Transform image</div>
