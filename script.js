@@ -366,6 +366,11 @@
     });
   }
 
+  // Prevent the website's long-press context menu and text-selection handles on touch devices.
+  document.addEventListener("contextmenu", (event) => event.preventDefault());
+  document.addEventListener("selectstart", (event) => {
+    if (!event.target.closest('input, textarea, [contenteditable="true"]')) event.preventDefault();
+  });
   $("openImageButton").addEventListener("click",openPicker);
   fileInput.addEventListener("change",(event)=>{readFile(event.target.files&&event.target.files[0]);fileInput.value="";});
   sliderIds.forEach((id)=>{
