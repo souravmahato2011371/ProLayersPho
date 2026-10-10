@@ -65,3 +65,12 @@ input,textarea,[contenteditable="true"] {
 img,canvas,svg {
   -webkit-user-drag:none;
 }
+
+
+/* Remove Android/Chrome's blue tap highlight on controls while keeping keyboard focus visible. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button, a, input, select, .rail-tool, .preset-button, .icon-button, .small-button, .wide-action {
+  -webkit-tap-highlight-color: transparent;
+}
