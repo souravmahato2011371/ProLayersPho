@@ -49,3 +49,19 @@ select:focus-visible{outline:2px solid #b6aaff;outline-offset:2px}
  .preset-button{min-height:58px}
  .settings-section{margin-bottom:23px}
 }
+
+/* Mobile app feel: suppress long-press text selection and browser callouts. */
+html,body,.app-shell,.topbar,.workspace,.properties-panel,.tool-rail,.canvas-stage,
+button,label,span,h1,h2,p,a,svg,canvas {
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-touch-callout:none;
+}
+input,textarea,[contenteditable="true"] {
+  -webkit-user-select:text;
+  user-select:text;
+  -webkit-touch-callout:default;
+}
+img,canvas,svg {
+  -webkit-user-drag:none;
+}
