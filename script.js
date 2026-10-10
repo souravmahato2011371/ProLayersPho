@@ -19,6 +19,10 @@
     dramatic: {...defaults,exposure:-5,contrast:123,highlights:-28,shadows:17,ambience:12,saturation:109,vibrance:12,warmth:-3,structure:27,sharpen:23,vignette:23}
   };
   const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,settings:{...defaults},layers:[],activeLayerId:null,selectionMask:null,selectionTool:"rectangle",selectionStart:null,selectionCurrent:null,selectionDrawing:false,brushSize:32,baseVisible:true,layerCounter:0};
+  let canvasTool = "select";
+  let canvasZoom = 1;
+  let canvasPan = {x:0,y:0};
+  let panGesture = null;
   let undoStack = [];
   let redoStack = [];
   let toastTimeout = 0;
@@ -146,13 +150,58 @@
       else{ctx.beginPath();ctx.ellipse((a.x+b.x)/2,(a.y+b.y)/2,Math.abs(b.x-a.x)/2,Math.abs(b.y-a.y)/2,0,0,Math.PI*2);ctx.stroke();}ctx.restore();
     }
   }
+  function setCanvasTool(tool) {
+    if (!["move","select"].includes(tool)) return;
+    canvasTool=tool;
+    document.querySelectorAll("[data-canvas-tool]").forEach((button)=>{
+      const active=button.dataset.canvasTool===tool;
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-pressed",String(active));
+    });
+    selectionOverlay.classList.toggle("is-moving-layer",tool==="move");
+    selectionOverlay.style.cursor=tool==="move"?"grab":"crosshair";
+  }
+  function applyCanvasView() {
+    const stack=$("canvasStack");
+    if(!stack)return;
+    stack.style.transform="translate("+canvasPan.x+"px, "+canvasPan.y+"px) scale("+canvasZoom+")";
+    $("zoomLabel").textContent=Math.round(canvasZoom*100)+"%";
+    $("zoomCanvasButton").setAttribute("aria-label","Zoom canvas ("+Math.round(canvasZoom*100)+"%)");
+  }
+  function cycleCanvasZoom() {
+    canvasZoom=canvasZoom>=2?1:canvasZoom===1?1.25:canvasZoom===1.25?1.5:2;
+    if(canvasZoom===1)canvasPan={x:0,y:0};
+    applyCanvasView();
+    notify("Canvas zoom · "+Math.round(canvasZoom*100)+"%");
+  }
+  function beginPan(event) {
+    event.preventDefault();
+    selectionOverlay.setPointerCapture(event.pointerId);
+    panGesture={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,originX:canvasPan.x,originY:canvasPan.y,moved:false};
+    selectionOverlay.style.cursor="grabbing";
+  }
+  function movePan(event) {
+    if(!panGesture||panGesture.pointerId!==event.pointerId)return;
+    event.preventDefault();
+    const dx=event.clientX-panGesture.startX,dy=event.clientY-panGesture.startY;
+    if(Math.abs(dx)+Math.abs(dy)>2)panGesture.moved=true;
+    canvasPan={x:panGesture.originX+dx,y:panGesture.originY+dy};
+    applyCanvasView();
+  }
+  function finishPan(event) {
+    if(!panGesture||panGesture.pointerId!==event.pointerId)return;
+    panGesture=null;
+    selectionOverlay.style.cursor="grab";
+  }
   function selectionPoint(event) {
     const rect=selectionOverlay.getBoundingClientRect();
     return {x:Math.max(0,Math.min(previewCanvas.width,(event.clientX-rect.left)/rect.width*previewCanvas.width)),y:Math.max(0,Math.min(previewCanvas.height,(event.clientY-rect.top)/rect.height*previewCanvas.height))};
   }
   function beginCanvasGesture(event) {
     if (!state.imageElement || !previewCanvas.width) return;
-    if (!state.activeLayerId) { beginSelection(event); return; }
+    if(canvasTool==="select"){beginSelection(event);return;}
+    if(canvasTool==="move"&&!state.activeLayerId){beginPan(event);return;}
+    if(canvasTool==="move"&&state.activeLayerId){
     const layer = state.layers.find((item) => item.id === state.activeLayerId);
     if (!layer || !layer.maskCanvas || event.button === 2) return;
     event.preventDefault();
@@ -161,8 +210,11 @@
     recordHistory();
     canvasMoveGesture = {pointerId:event.pointerId,layerId:layer.id,start:point,original:cloneCanvas(layer.maskCanvas),moved:false};
     selectionOverlay.classList.add("is-moving-layer");
+    return;
+    }
   }
   function moveCanvasGesture(event) {
+    if(panGesture){movePan(event);return;}
     if (!canvasMoveGesture || canvasMoveGesture.pointerId !== event.pointerId) {
       if (!canvasMoveGesture) moveSelection(event);
       return;
@@ -184,6 +236,7 @@
     drawSelectionOverlay();
   }
   function finishCanvasGesture(event) {
+    if(panGesture){finishPan(event);return;}
     if (canvasMoveGesture) {
       const moved = canvasMoveGesture.moved;
       canvasMoveGesture = null;
@@ -552,7 +605,11 @@
   $("brushSize").addEventListener("input",()=>{state.brushSize=Number($("brushSize").value);});
   $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
   $("addAreaLayerButton").addEventListener("click",addAreaLayer);
-  selectionOverlay.addEventListener("pointerdown",beginCanvasGesture);selectionOverlay.addEventListener("pointermove",(event)=>{if(canvasMoveGesture)moveCanvasGesture(event);else moveSelection(event);});selectionOverlay.addEventListener("pointerup",finishCanvasGesture);selectionOverlay.addEventListener("pointercancel",finishCanvasGesture);
+  selectionOverlay.addEventListener("pointerdown",beginCanvasGesture);selectionOverlay.addEventListener("pointermove",(event)=>{if(canvasMoveGesture||panGesture)moveCanvasGesture(event);else if(canvasTool==="select")moveSelection(event);});selectionOverlay.addEventListener("pointerup",finishCanvasGesture);selectionOverlay.addEventListener("pointercancel",finishCanvasGesture);
+  document.querySelectorAll("[data-canvas-tool]").forEach((button)=>button.addEventListener("click",()=>setCanvasTool(button.dataset.canvasTool)));
+  $("zoomCanvasButton").addEventListener("click",cycleCanvasZoom);
+  setCanvasTool("select");
+  applyCanvasView();
   let opacityGestureActive=false;
   $("layerList").addEventListener("pointerdown",(event)=>{if(event.target.matches("[data-layer-opacity]")){recordHistory();opacityGestureActive=true;}});
   $("layerList").addEventListener("pointerup",()=>{opacityGestureActive=false;});
