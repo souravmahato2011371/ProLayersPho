@@ -410,3 +410,32 @@ select:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible
 .layer-row .layer-eye{width:29px;height:29px;flex:none}
 .layer-row .layer-eye.is-hidden{color:#747b6a;opacity:.65}
 @media(max-width:650px){.area-editor{padding:11px}.selection-tool{font-size:9px}.selection-actions .button{padding:10px 7px}}
+
+
+/* Reliable layer stack: adjustment layers above the locked photo base */
+.layer-list{overflow:visible;gap:7px}
+.layer-row{position:relative;gap:7px;padding:8px;align-items:center}
+.layer-row.layer-background{order:999;border-style:dashed;background:#191b17}
+.layer-adjustment-thumb{flex:none;font-size:20px;background:#292d20;color:#d8ef9b;border:1px solid #414a31}
+.layer-select-button{flex:1;width:0;min-width:0;overflow:hidden;text-align:left;text-overflow:ellipsis;white-space:nowrap;padding:5px 0;border:0;background:transparent;color:#e3e6d9;font-size:11px}
+.layer-select-button small{display:block;margin-top:4px;font-size:9px;color:#949b87;font-weight:400}
+.layer-row .layer-eye{width:29px;height:29px;flex:none}
+.layer-options{position:relative;flex:none}
+.layer-options>summary{list-style:none;cursor:pointer;user-select:none}
+.layer-options>summary::-webkit-details-marker{display:none}
+.layer-menu{font-size:12px;letter-spacing:1px;font-weight:800}
+.layer-options[open]>summary{border-color:#a8c77b;color:#d8ef9b}
+.layer-options-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:190px;padding:10px;display:flex;flex-direction:column;gap:6px;background:#20241b;border:1px solid #48513b;border-radius:11px;box-shadow:0 12px 35px #0009}
+.layer-menu-title{padding:3px 4px 7px;color:#d8ef9b;font-size:10px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid #343b2b}
+.layer-options-menu button{width:100%;min-height:32px;padding:7px 9px;text-align:left;border:1px solid #373e2f;border-radius:7px;background:#292e22;color:#dfe4d3;font-size:10px}
+.layer-options-menu button:disabled{opacity:.35}
+.layer-order-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.layer-order-actions button{padding-inline:5px;text-align:center}
+.layer-opacity-control{display:flex;flex-direction:column;gap:9px;padding:8px 3px;color:#c1c8b3;font-size:10px}
+.layer-opacity-control span{display:flex;justify-content:space-between;align-items:center}
+.layer-opacity-control output{color:#d8ef9b;font-variant-numeric:tabular-nums}
+.layer-opacity-control input{width:100%}
+.layer-options-menu button.layer-danger{color:#f1a99c;border-color:#634038;background:#30211e}
+.layer-lock{flex:none;font-size:8px;letter-spacing:.7px;color:#8c927f;border:1px solid #3a4032;border-radius:5px;padding:4px}
+.layer-background .layer-select-button{color:#b7beaa}
+@media(max-width:650px){.layer-options-menu{position:fixed;right:16px;top:auto;bottom:80px;width:min(220px,calc(100vw - 32px));}.layer-row{padding:7px;gap:6px}.layer-thumb{width:32px;height:32px}.layer-row .layer-eye,.layer-options>summary{width:28px;height:28px}.layer-select-button{font-size:10px}.layer-select-button small{font-size:8px}}
