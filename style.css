@@ -450,3 +450,14 @@ select:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible
 #selectionOverlay{touch-action:none;cursor:crosshair}
 #selectionOverlay.is-moving-layer{cursor:grabbing}
 @media(max-width:650px){.layer-drag-handle{width:20px;min-width:20px;font-size:18px}.layer-row{touch-action:pan-y}}
+
+
+/* Compact canvas tool dock */
+.canvas-toolbox{position:absolute;z-index:3;top:14px;left:14px;display:flex;align-items:center;gap:4px;padding:5px;border:1px solid #353640;border-radius:11px;background:#191a20;box-shadow:0 8px 26px #0005}
+.canvas-tool{min-height:34px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:1px solid transparent;border-radius:7px;background:transparent;color:#aeb0bd;font-size:11px;font-weight:650;touch-action:manipulation}
+.canvas-tool svg{width:16px;height:16px}
+.canvas-tool:hover{background:#252630;color:#f0f1f6}
+.canvas-tool.active{background:#2b2840;border-color:#454064;color:#c4baff}
+.canvas-stack{transform-origin:center center;will-change:transform}
+#selectionOverlay{touch-action:none}
+@media(max-width:650px){.canvas-toolbox{top:9px;left:9px;gap:2px;padding:4px}.canvas-tool{min-height:32px;padding:0 8px;font-size:10px}.canvas-tool svg{width:15px;height:15px}}
