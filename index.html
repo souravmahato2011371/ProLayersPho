@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111216">
-  <meta name="description" content="A clean, creative photo editing workspace.">
+  <meta name="description" content="A powerful, mobile-first photo editing workspace.">
   <title>ProLayers Pho — Photo Editor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,14 +18,13 @@
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
     <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></symbol>
-    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18M10.6 6.2A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-3 3.6M6.2 6.8C3.8 8.3 2.5 12 2.5 12s3.5 6 9.5 6c.8 0 1.5-.1 2.2-.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M20 12a8 8 0 1 0 1 4"/></symbol>
     <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M5 6l-3 6 3 6M19 6l3 6-3 6M8 6h-3M8 18h-3M16 6h3M16 18h3"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v2"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9h-9a7 7 0 0 0-7 7v2"/></symbol>
     <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.6 6.4"/><path d="M3 4v7h7"/></symbol>
-    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
     <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="m19 14 1.1 2.9L23 18l-2.9 1.1L19 22l-1.1-2.9L15 18l2.9-1.1L19 14ZM5 2l.8 2.2L8 5l-2.2.8L5 8l-.8-2.2L2 5l2.2-.8L5 2Z"/></symbol>
   </svg>
 
@@ -34,16 +33,19 @@
       <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg></span>
       <span class="brand-name">ProLayers <span>Pho</span></span>
     </a>
-    <div class="document-name"><span class="status-dot"></span><span id="documentTitle">Untitled project</span><span class="saved-label">Local workspace</span></div>
+    <div class="document-name"><span class="status-dot"></span><span id="documentTitle">Untitled project</span><span class="saved-label">Private workspace</span></div>
     <div class="top-actions">
-      <button class="icon-button" id="undoButton" type="button" aria-label="Reset adjustments" title="Reset adjustments"><svg><use href="#i-undo"/></svg></button>
+      <div class="history-actions">
+        <button class="icon-button" id="undoButton" type="button" aria-label="Undo" title="Undo" disabled><svg><use href="#i-undo"/></svg></button>
+        <button class="icon-button" id="redoButton" type="button" aria-label="Redo" title="Redo" disabled><svg><use href="#i-redo"/></svg></button>
+      </div>
       <button class="button button-primary" id="exportButton" type="button" disabled><svg><use href="#i-download"/></svg> Export</button>
     </div>
   </header>
 
   <main class="app-shell">
     <nav class="tool-rail" aria-label="Editor tools">
-      <button class="rail-tool active" type="button" data-panel="adjustments" aria-pressed="true"><svg><use href="#i-sliders"/></svg><span>Adjust</span></button>
+      <button class="rail-tool active" type="button" data-panel="adjustments" aria-pressed="true"><svg><use href="#i-sliders"/></svg><span>Edit</span></button>
       <button class="rail-tool" type="button" data-panel="layers" aria-pressed="false"><svg><use href="#i-layers"/></svg><span>Layers</span></button>
       <button class="rail-tool" type="button" data-panel="transform" aria-pressed="false"><svg><use href="#i-move"/></svg><span>Transform</span></button>
     </nav>
@@ -54,6 +56,7 @@
         <div class="canvas-actions">
           <button class="small-button" id="rotateButton" type="button" disabled><svg><use href="#i-rotate"/></svg><span>Rotate</span></button>
           <button class="small-button" id="flipButton" type="button" disabled><svg><use href="#i-flip"/></svg><span>Flip</span></button>
+          <button class="small-button compare-button" id="compareButton" type="button" disabled aria-pressed="false" title="Hold to compare with original"><svg><use href="#i-eye"/></svg><span>Before</span></button>
           <button class="small-button" id="openImageButton" type="button"><svg><use href="#i-upload"/></svg><span>Open photo</span></button>
         </div>
       </div>
@@ -61,37 +64,72 @@
         <div class="empty-state" id="emptyState">
           <div class="empty-art"><svg><use href="#i-image"/></svg></div>
           <h1>Your canvas, your vision.</h1>
-          <p>Open a photo to start shaping your next creation. Your original image stays on this device.</p>
+          <p>Open a photo to start shaping your next creation. Editing happens on your device.</p>
           <button class="button button-primary" type="button" id="emptyOpenButton"><svg><use href="#i-upload"/></svg> Open a photo</button>
-          <span class="file-hint">JPG · PNG · WEBP</span>
+          <span class="file-hint">JPG · PNG · WEBP · other supported image formats</span>
         </div>
         <div class="image-viewport" id="imageViewport" hidden>
-          <img id="editedImage" alt="Photo being edited">
+          <canvas id="previewCanvas" aria-label="Edited photo preview"></canvas>
         </div>
       </div>
-      <footer class="canvas-footer"><span id="imageDimensions">Canvas · —</span><span>Changes stay local until you export</span></footer>
+      <footer class="canvas-footer"><span id="imageDimensions">Canvas · —</span><span id="renderStatus">Edits are previewed locally</span></footer>
     </section>
 
     <aside class="properties-panel" id="propertiesPanel" aria-label="Properties">
-      <div class="panel-heading"><div><span class="eyebrow">PROPERTIES</span><h2 id="panelTitle">Adjustments</h2></div><button class="icon-button panel-reset" id="resetButton" type="button" aria-label="Reset settings" title="Reset settings"><svg><use href="#i-reset"/></svg></button></div>
+      <div class="panel-heading"><div><span class="eyebrow">PHOTO STUDIO</span><h2 id="panelTitle">Tune image</h2></div><button class="icon-button panel-reset" id="resetButton" type="button" aria-label="Reset all edits" title="Reset adjustments" disabled><svg><use href="#i-reset"/></svg></button></div>
       <div class="panel-content" id="adjustmentsPanel">
-        <div class="section-label"><svg><use href="#i-sliders"/></svg> Light &amp; colour</div>
-        <div class="range-control"><div class="range-label"><label for="brightness">Brightness</label><output id="brightnessValue" for="brightness">100%</output></div><input id="brightness" type="range" min="50" max="150" value="100"></div>
-        <div class="range-control"><div class="range-label"><label for="contrast">Contrast</label><output id="contrastValue" for="contrast">100%</output></div><input id="contrast" type="range" min="50" max="150" value="100"></div>
-        <div class="range-control"><div class="range-label"><label for="saturation">Saturation</label><output id="saturationValue" for="saturation">100%</output></div><input id="saturation" type="range" min="0" max="200" value="100"></div>
-        <div class="range-control"><div class="range-label"><label for="warmth">Warmth</label><output id="warmthValue" for="warmth">0</output></div><input id="warmth" type="range" min="-100" max="100" value="0"></div>
-        <div class="panel-note"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sparkles"/></svg> Adjustments preview instantly. Export creates a new PNG and leaves your source photo untouched.</div>
+        <section class="settings-section">
+          <div class="section-label"><svg><use href="#i-sliders"/></svg> Light</div>
+          <div class="range-control"><div class="range-label"><label for="exposure">Exposure</label><output id="exposureValue" for="exposure">0</output></div><input id="exposure" type="range" min="-100" max="100" value="0"><div class="range-help"><span>Darker</span><span>Brighter</span></div></div>
+          <div class="range-control"><div class="range-label"><label for="brightness">Brightness</label><output id="brightnessValue" for="brightness">100%</output></div><input id="brightness" type="range" min="50" max="150" value="100"></div>
+          <div class="range-control"><div class="range-label"><label for="contrast">Contrast</label><output id="contrastValue" for="contrast">100%</output></div><input id="contrast" type="range" min="50" max="150" value="100"></div>
+          <div class="range-control"><div class="range-label"><label for="highlights">Highlights</label><output id="highlightsValue" for="highlights">0</output></div><input id="highlights" type="range" min="-100" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="shadows">Shadows</label><output id="shadowsValue" for="shadows">0</output></div><input id="shadows" type="range" min="-100" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="ambience">Ambience</label><output id="ambienceValue" for="ambience">0</output></div><input id="ambience" type="range" min="-100" max="100" value="0"></div>
+        </section>
+        <section class="settings-section">
+          <div class="section-label"><svg><use href="#i-sparkles"/></svg> Colour</div>
+          <div class="range-control"><div class="range-label"><label for="saturation">Saturation</label><output id="saturationValue" for="saturation">100%</output></div><input id="saturation" type="range" min="0" max="200" value="100"></div>
+          <div class="range-control"><div class="range-label"><label for="vibrance">Vibrance</label><output id="vibranceValue" for="vibrance">0</output></div><input id="vibrance" type="range" min="-100" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="warmth">Temperature</label><output id="warmthValue" for="warmth">0</output></div><input id="warmth" type="range" min="-100" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="tint">Tint</label><output id="tintValue" for="tint">0</output></div><input id="tint" type="range" min="-100" max="100" value="0"></div>
+        </section>
+        <section class="settings-section">
+          <div class="section-label"><svg><use href="#i-image"/></svg> Detail &amp; finish</div>
+          <div class="range-control"><div class="range-label"><label for="structure">Structure</label><output id="structureValue" for="structure">0</output></div><input id="structure" type="range" min="0" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="sharpen">Sharpening</label><output id="sharpenValue" for="sharpen">0</output></div><input id="sharpen" type="range" min="0" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="fade">Fade</label><output id="fadeValue" for="fade">0</output></div><input id="fade" type="range" min="0" max="100" value="0"></div>
+          <div class="range-control"><div class="range-label"><label for="vignette">Vignette</label><output id="vignetteValue" for="vignette">0</output></div><input id="vignette" type="range" min="0" max="100" value="0"></div>
+        </section>
+        <section class="settings-section">
+          <div class="section-label"><svg><use href="#i-sparkles"/></svg> Quick looks</div>
+          <div class="preset-grid">
+            <button class="preset-button active" type="button" data-preset="original"><span>Original</span></button>
+            <button class="preset-button" type="button" data-preset="portrait"><span>Soft portrait</span></button>
+            <button class="preset-button" type="button" data-preset="warm"><span>Warm film</span></button>
+            <button class="preset-button" type="button" data-preset="cool"><span>Cool clean</span></button>
+            <button class="preset-button" type="button" data-preset="noir"><span>Noir</span></button>
+            <button class="preset-button" type="button" data-preset="dramatic"><span>Dramatic</span></button>
+          </div>
+        </section>
+        <div class="panel-note"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sparkles"/></svg> Your original file is never overwritten. Use Undo and Redo to move through edits, then export a new image.</div>
+        <section class="export-settings">
+          <div class="section-label"><svg><use href="#i-download"/></svg> Export options</div>
+          <div><label class="panel-mini-label" for="exportFormat">File format</label><select id="exportFormat"><option value="image/png">PNG · best for transparency</option><option value="image/jpeg">JPEG · smaller file</option><option value="image/webp">WebP · compact file</option></select></div>
+          <div class="range-control"><div class="range-label"><label for="exportQuality">Quality (JPEG / WebP)</label><output id="exportQualityValue" for="exportQuality">92%</output></div><input id="exportQuality" type="range" min="40" max="100" value="92"></div>
+        </section>
       </div>
       <div class="panel-content" id="layersPanel" hidden>
         <div class="section-label"><svg><use href="#i-layers"/></svg> Layers <span class="layer-count" id="layerCount">0</span></div>
         <div class="layer-list" id="layerList"><div class="layer-empty">Open an image to create your first layer.</div></div>
-        <div class="panel-note">This early build has a single photo layer. Full multi-layer editing is planned for a later version.</div>
+        <div class="panel-note">The current build supports one photo layer. Multi-image layers, blend modes and masks are part of the planned advanced editor.</div>
       </div>
       <div class="panel-content" id="transformPanel" hidden>
         <div class="section-label"><svg><use href="#i-move"/></svg> Transform image</div>
         <button class="wide-action" id="transformRotate" type="button" disabled><svg><use href="#i-rotate"/></svg> Rotate 90°</button>
         <button class="wide-action" id="transformFlip" type="button" disabled><svg><use href="#i-flip"/></svg> Flip horizontally</button>
-        <div class="panel-note">Rotate and flip are applied to the exported image too.</div>
+        <button class="wide-action" id="transformReset" type="button" disabled><svg><use href="#i-reset"/></svg> Reset rotation &amp; flip</button>
+        <div class="panel-note">Rotation and flipping are baked into the exported image. Crop and perspective tools will be added in a later milestone.</div>
       </div>
     </aside>
   </main>
@@ -99,8 +137,6 @@
   <input id="fileInput" type="file" accept="image/*" hidden>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="script.js"></script>
-  <script>
-    document.getElementById("emptyOpenButton").addEventListener("click", () => document.getElementById("openImageButton").click());
-  </script>
+  <script>document.getElementById("emptyOpenButton").addEventListener("click",function(){document.getElementById("openImageButton").click();});</script>
 </body>
 </html>
