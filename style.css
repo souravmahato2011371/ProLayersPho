@@ -439,3 +439,14 @@ select:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible
 .layer-lock{flex:none;font-size:8px;letter-spacing:.7px;color:#8c927f;border:1px solid #3a4032;border-radius:5px;padding:4px}
 .layer-background .layer-select-button{color:#b7beaa}
 @media(max-width:650px){.layer-options-menu{position:fixed;right:16px;top:auto;bottom:80px;width:min(220px,calc(100vw - 32px));}.layer-row{padding:7px;gap:6px}.layer-thumb{width:32px;height:32px}.layer-row .layer-eye,.layer-options>summary{width:28px;height:28px}.layer-select-button{font-size:10px}.layer-select-button small{font-size:8px}}
+
+
+/* Direct manipulation for area layers on touch screens */
+.layer-row{touch-action:pan-y}
+.layer-drag-handle{width:22px;min-width:22px;height:32px;flex:none;padding:0;border:0;background:transparent;color:#8e987d;font-size:19px;line-height:1;cursor:grab;touch-action:none;user-select:none}
+.layer-drag-handle:active{cursor:grabbing;color:#d8ef9b}
+.layer-row.is-dragging{opacity:.58;border-color:#d8ef9b;box-shadow:0 0 0 1px #d8ef9b;pointer-events:none}
+.layer-row:not(.layer-background){transition:background .14s,border-color .14s,opacity .14s}
+#selectionOverlay{touch-action:none;cursor:crosshair}
+#selectionOverlay.is-moving-layer{cursor:grabbing}
+@media(max-width:650px){.layer-drag-handle{width:20px;min-width:20px;font-size:18px}.layer-row{touch-action:pan-y}}
