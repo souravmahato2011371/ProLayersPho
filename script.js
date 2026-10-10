@@ -3,6 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const fileInput = $("fileInput");
   const previewCanvas = $("previewCanvas");
+  const selectionOverlay = $("selectionOverlay");
   const imageViewport = $("imageViewport");
   const emptyState = $("emptyState");
   const canvasStage = $("canvasStage");
@@ -17,7 +18,7 @@
     noir: {...defaults,exposure:2,contrast:125,highlights:-18,shadows:10,ambience:5,saturation:0,structure:20,sharpen:18,vignette:24},
     dramatic: {...defaults,exposure:-5,contrast:123,highlights:-28,shadows:17,ambience:12,saturation:109,vibrance:12,warmth:-3,structure:27,sharpen:23,vignette:23}
   };
-  const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,settings:{...defaults}};
+  const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,settings:{...defaults},layers:[],activeLayerId:null,selectionMask:null,selectionTool:"rectangle",selectionStart:null,selectionCurrent:null,selectionDrawing:false,brushSize:32,baseVisible:true,layerCounter:0};
   let undoStack = [];
   let redoStack = [];
   let toastTimeout = 0;
@@ -38,8 +39,12 @@
     return String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
   }
 
+  function editingSettings() {
+    const layer=state.layers.find((item)=>item.id===state.activeLayerId);
+    return layer ? layer.settings : state.settings;
+  }
   function snapshot() {
-    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset};
+    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:{...layer.settings}})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
   }
 
   function recordHistory() {
@@ -55,15 +60,96 @@
     $("redoButton").disabled = redoStack.length === 0;
     $("resetButton").disabled = !state.imageElement;
   }
+  function cloneCanvas(source) {
+    if (!source) return null;
+    const copy=document.createElement("canvas"); copy.width=source.width; copy.height=source.height;
+    copy.getContext("2d").drawImage(source,0,0); return copy;
+  }
+  function updateSelectionControls() {
+    $("clearSelectionButton").disabled=!state.selectionMask;
+    $("addAreaLayerButton").disabled=!state.selectionMask || !state.imageElement;
+    $("selectionStatus").textContent=state.selectionMask ? "Area selected. Add an area layer, then use Edit to tune only this region." : "Open a photo, then draw a shape or brush over the area you want to edit.";
+    document.querySelectorAll("[data-selection-tool]").forEach((button)=>{const active=button.dataset.selectionTool===state.selectionTool;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
+  }
+  function renderLayerList() {
+    const list=$("layerList");
+    if (!state.imageElement) {list.innerHTML='<div class="layer-empty">Open an image to create your first layer.</div>';$("layerCount").textContent="0";return;}
+    let markup='<div class="layer-row'+(state.activeLayerId?"":" is-active")+'"><div class="layer-thumb"><img src="'+state.sourceUrl+'" alt=""></div><button class="layer-select-button" type="button" data-select-base>'+escapeHtml(state.fileName)+'<small>Photo layer</small></button><button class="icon-button layer-eye'+(state.baseVisible?"":" is-hidden")+'" type="button" data-toggle-base aria-label="Toggle photo visibility" title="Toggle photo visibility"><svg><use href="#i-eye"/></svg></button></div>';
+    state.layers.slice().reverse().forEach((layer)=>{const active=layer.id===state.activeLayerId;markup+='<div class="layer-row'+(active?' is-active':'')+'"><div class="layer-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'">'+escapeHtml(layer.name)+'<small>Area adjustment</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><button class="icon-button layer-delete" type="button" data-delete-layer="'+layer.id+'" aria-label="Delete '+escapeHtml(layer.name)+'" title="Delete layer">×</button></div>';});
+    list.innerHTML=markup; $("layerCount").textContent=String(state.layers.length+1);
+  }
+  function setActiveLayer(id) {
+    state.activeLayerId=id; activePreset=""; syncControls(); renderLayerList(); schedulePreview();
+    if (!$("adjustmentsPanel").hidden) $("panelTitle").textContent=id?"Tune layer":"Tune image";
+    notify(id?"Area layer selected":"Photo layer selected");
+  }
+  function addAreaLayer() {
+    if (!state.imageElement || !state.selectionMask) {notify("Select an area first.");return;}
+    recordHistory();
+    state.layerCounter+=1;
+    state.layers.push({id:"area-"+state.layerCounter,name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
+    state.activeLayerId="area-"+state.layerCounter; renderLayerList(); syncControls(); schedulePreview(); setActivePanel("adjustments"); notify("Area adjustment layer added");
+  }
+  function clearSelection() {
+    state.selectionMask=null;state.selectionStart=null;state.selectionCurrent=null;state.selectionDrawing=false;
+    const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);updateSelectionControls();
+  }
+  function drawSelectionOverlay() {
+    if (!previewCanvas.width || !previewCanvas.height) return;
+    if(selectionOverlay.width!==previewCanvas.width)selectionOverlay.width=previewCanvas.width;
+    if(selectionOverlay.height!==previewCanvas.height)selectionOverlay.height=previewCanvas.height;
+    const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);
+    if(state.selectionMask){ctx.save();ctx.globalAlpha=.25;ctx.drawImage(state.selectionMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
+    if(state.selectionDrawing&&state.selectionStart&&state.selectionCurrent&&state.selectionTool!=="brush"){
+      const a=state.selectionStart,b=state.selectionCurrent;ctx.save();ctx.strokeStyle="#d8ef9b";ctx.lineWidth=Math.max(1,selectionOverlay.width/800*1.5);ctx.setLineDash([7,4]);
+      if(state.selectionTool==="rectangle")ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
+      else{ctx.beginPath();ctx.ellipse((a.x+b.x)/2,(a.y+b.y)/2,Math.abs(b.x-a.x)/2,Math.abs(b.y-a.y)/2,0,0,Math.PI*2);ctx.stroke();}ctx.restore();
+    }
+  }
+  function selectionPoint(event) {
+    const rect=selectionOverlay.getBoundingClientRect();
+    return {x:Math.max(0,Math.min(previewCanvas.width,(event.clientX-rect.left)/rect.width*previewCanvas.width)),y:Math.max(0,Math.min(previewCanvas.height,(event.clientY-rect.top)/rect.height*previewCanvas.height))};
+  }
+  function beginSelection(event) {
+    if(!state.imageElement||!previewCanvas.width)return;event.preventDefault();selectionOverlay.setPointerCapture(event.pointerId);
+    const point=selectionPoint(event);state.selectionMask=document.createElement("canvas");state.selectionMask.width=previewCanvas.width;state.selectionMask.height=previewCanvas.height;
+    state.selectionStart=point;state.selectionCurrent=point;state.selectionDrawing=true;
+    if(state.selectionTool==="brush"){const ctx=state.selectionMask.getContext("2d");ctx.strokeStyle="#fff";ctx.fillStyle="#fff";ctx.lineWidth=state.brushSize;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.arc(point.x,point.y,state.brushSize/2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(point.x,point.y);}
+    drawSelectionOverlay();updateSelectionControls();
+  }
+  function moveSelection(event) {
+    if(!state.selectionDrawing)return;event.preventDefault();const point=selectionPoint(event);state.selectionCurrent=point;
+    if(state.selectionTool==="brush"){const ctx=state.selectionMask.getContext("2d");ctx.strokeStyle="#fff";ctx.lineWidth=state.brushSize;ctx.lineCap="round";ctx.lineJoin="round";ctx.lineTo(point.x,point.y);ctx.stroke();ctx.beginPath();ctx.moveTo(point.x,point.y);}
+    drawSelectionOverlay();
+  }
+  function finishSelection(event) {
+    if(!state.selectionDrawing)return;const point=selectionPoint(event);state.selectionCurrent=point;
+    if(state.selectionTool!=="brush"){const ctx=state.selectionMask.getContext("2d");ctx.fillStyle="#fff";const a=state.selectionStart,b=point;
+      if(state.selectionTool==="rectangle")ctx.fillRect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));
+      else{ctx.beginPath();ctx.ellipse((a.x+b.x)/2,(a.y+b.y)/2,Math.max(1,Math.abs(b.x-a.x)/2),Math.max(1,Math.abs(b.y-a.y)/2),0,0,Math.PI*2);ctx.fill();}}
+    state.selectionDrawing=false;state.selectionStart=null;state.selectionCurrent=null;drawSelectionOverlay();updateSelectionControls();notify("Area selected");
+  }
+  function applyAreaLayers(base) {
+    const baseContext=base.getContext("2d");if(!state.baseVisible)baseContext.clearRect(0,0,base.width,base.height);
+    state.layers.forEach((layer)=>{if(!layer.visible||!layer.maskCanvas)return;
+      const adjusted=document.createElement("canvas");adjusted.width=base.width;adjusted.height=base.height;
+      const adjustedContext=adjusted.getContext("2d",{willReadFrequently:true});adjustedContext.drawImage(base,0,0);
+      if(!processCanvas(adjusted,layer.settings))return;
+      adjustedContext.globalCompositeOperation="destination-in";adjustedContext.drawImage(layer.maskCanvas,0,0,base.width,base.height);adjustedContext.globalCompositeOperation="source-over";
+      baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(adjusted,0,0);baseContext.restore();
+    });return base;
+  }
 
   function restoreSnapshot(saved) {
     state.settings = {...saved.settings};
     state.rotation = saved.rotation;
     state.flipped = saved.flipped;
+    state.layers = (saved.layers || []).map((layer)=>({...layer,settings:{...layer.settings}}));
+    state.activeLayerId = saved.activeLayerId || null;
+    state.baseVisible = saved.baseVisible !== false;
+    state.layerCounter = saved.layerCounter || state.layers.length;
     activePreset = saved.activePreset || "";
-    syncControls();
-    schedulePreview();
-    updateHistoryButtons();
+    syncControls(); renderLayerList(); schedulePreview(); updateHistoryButtons();
   }
 
   function undo() {
@@ -91,27 +177,12 @@
   function openPicker() { fileInput.click(); }
 
   function setImageLoaded(loaded) {
-    emptyState.hidden = loaded;
-    imageViewport.hidden = !loaded;
-    exportButton.disabled = !loaded;
-    $("rotateButton").disabled = !loaded;
-    $("flipButton").disabled = !loaded;
-    $("compareButton").disabled = !loaded;
-    $("transformRotate").disabled = !loaded;
-    $("transformFlip").disabled = !loaded;
-    $("transformReset").disabled = !loaded;
-    $("canvasStatus").textContent = loaded ? state.fileName : "No image loaded";
-    $("documentTitle").textContent = loaded ? state.fileName : "Untitled project";
-    $("layerCount").textContent = loaded ? "1" : "0";
-    $("layerList").innerHTML = loaded
-      ? '<div class="layer-row"><div class="layer-thumb"><img src="' + state.sourceUrl + '" alt=""></div><span class="layer-name" title="' + escapeHtml(state.fileName) + '">' + escapeHtml(state.fileName) + '</span><button class="icon-button" id="layerVisibility" type="button" aria-label="Toggle image visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button></div>'
-      : '<div class="layer-empty">Open an image to create your first layer.</div>';
-    const visibilityButton = $("layerVisibility");
-    if (visibilityButton) visibilityButton.addEventListener("click", () => {
-      previewCanvas.hidden = !previewCanvas.hidden;
-      notify(previewCanvas.hidden ? "Preview hidden" : "Preview visible");
-    });
-    updateHistoryButtons();
+    emptyState.hidden=loaded;imageViewport.hidden=!loaded;exportButton.disabled=!loaded;
+    $("rotateButton").disabled=!loaded;$("flipButton").disabled=!loaded;$("compareButton").disabled=!loaded;
+    $("transformRotate").disabled=!loaded;$("transformFlip").disabled=!loaded;$("transformReset").disabled=!loaded;
+    $("canvasStatus").textContent=loaded?state.fileName:"No image loaded";$("documentTitle").textContent=loaded?state.fileName:"Untitled project";
+    if(!loaded){state.layers=[];state.activeLayerId=null;state.baseVisible=true;clearSelection();}
+    renderLayerList();updateSelectionControls();updateHistoryButtons();
   }
 
   function readFile(file) {
@@ -127,6 +198,7 @@
       state.rotation = 0;
       state.flipped = false;
       state.settings = {...defaults};
+      state.layers=[];state.activeLayerId=null;state.baseVisible=true;state.layerCounter=0;clearSelection();
       compareMode = false;
       previewCanvas.hidden = false;
       $("compareButton").setAttribute("aria-pressed", "false");
@@ -146,10 +218,11 @@
   }
 
   function syncControls() {
+    const currentSettings=editingSettings();
     sliderIds.forEach((id) => {
-      $(id).value = state.settings[id];
+      $(id).value = currentSettings[id];
       const output = $(id + "Value");
-      const value = state.settings[id];
+      const value = currentSettings[id];
       output.value = ["brightness","contrast","saturation"].includes(id) ? value + "%" : (value > 0 ? "+" + value : String(value));
     });
     $("exportQualityValue").value = $("exportQuality").value + "%";
@@ -246,11 +319,10 @@
   }
 
   function renderImage(maxDimension, compareOriginal) {
-    const base=transformedSource(maxDimension);
-    if (!base) return null;
-    const settings=compareOriginal ? defaults : state.settings;
-    const processed=processCanvas(base,settings);
-    return processed;
+    const base=transformedSource(maxDimension);if(!base)return null;
+    const processed=processCanvas(base,compareOriginal?defaults:state.settings);
+    if(!processed||compareOriginal)return processed;
+    return applyAreaLayers(processed);
   }
 
   function schedulePreview() {
@@ -265,6 +337,9 @@
       const target=previewCanvas.getContext("2d");
       target.clearRect(0,0,previewCanvas.width,previewCanvas.height);
       target.drawImage(rendered,0,0);
+      if(selectionOverlay.width!==previewCanvas.width)selectionOverlay.width=previewCanvas.width;
+      if(selectionOverlay.height!==previewCanvas.height)selectionOverlay.height=previewCanvas.height;
+      drawSelectionOverlay();
       const sideways=Math.abs(state.rotation%180)===90;
       $("imageDimensions").textContent="Canvas · "+(sideways?state.imageElement.naturalHeight+" × "+state.imageElement.naturalWidth:state.imageElement.naturalWidth+" × "+state.imageElement.naturalHeight);
       $("renderStatus").textContent=compareMode?"Original adjustments · hold to compare":"Edits are previewed locally";
@@ -273,8 +348,7 @@
 
   function applyPreset(name) {
     if (!presets[name] || !state.imageElement) return;
-    recordHistory();
-    state.settings={...presets[name]};
+    recordHistory();Object.assign(editingSettings(),presets[name]);
     activePreset=name;
     syncControls();
     schedulePreview();
@@ -282,29 +356,17 @@
   }
 
   function resetAll() {
-    if (!state.imageElement) return;
-    recordHistory();
-    state.settings={...defaults};
-    state.rotation=0;
-    state.flipped=false;
-    activePreset="original";
-    syncControls();
-    schedulePreview();
-    notify("All edits reset");
+    if(!state.imageElement)return;recordHistory();
+    if(state.activeLayerId){const layer=state.layers.find((item)=>item.id===state.activeLayerId);if(layer)layer.settings={...defaults};activePreset="original";syncControls();schedulePreview();notify("Area layer adjustments reset");return;}
+    state.settings={...defaults};state.rotation=0;state.flipped=false;activePreset="original";syncControls();schedulePreview();notify("All edits reset");
   }
 
   function rotate() {
-    if (!state.imageElement) return;
-    recordHistory();
-    state.rotation=(state.rotation+90)%360;
-    schedulePreview();
+    if(!state.imageElement)return;recordHistory();state.rotation=(state.rotation+90)%360;clearSelection();schedulePreview();
   }
 
   function flip() {
-    if (!state.imageElement) return;
-    recordHistory();
-    state.flipped=!state.flipped;
-    schedulePreview();
+    if(!state.imageElement)return;recordHistory();state.flipped=!state.flipped;clearSelection();schedulePreview();
   }
 
   function resetTransform() {
@@ -317,7 +379,7 @@
   }
 
   function setActivePanel(panelName) {
-    const panelMap={adjustments:{title:"Tune image",id:"adjustmentsPanel"},layers:{title:"Layers",id:"layersPanel"},transform:{title:"Transform",id:"transformPanel"}};
+    const panelMap={adjustments:{title:state.activeLayerId?"Tune layer":"Tune image",id:"adjustmentsPanel"},layers:{title:"Layers",id:"layersPanel"},transform:{title:"Transform",id:"transformPanel"}};
     const selected=panelMap[panelName]||panelMap.adjustments;
     $("panelTitle").textContent=selected.title;
     Object.values(panelMap).forEach((panel)=>{ $(panel.id).hidden=panel.id!==selected.id; });
@@ -383,7 +445,7 @@
     input.addEventListener("blur",endGesture);
     input.addEventListener("input",()=>{
       if(!gestureActive){beginGesture();endGesture();}
-      state.settings[id]=Number(input.value);
+      editingSettings()[id]=Number(input.value);
       const output=$(id+"Value");
       output.value=["brightness","contrast","saturation"].includes(id)?input.value+"%":(Number(input.value)>0?"+"+input.value:input.value);
       activePreset="";
@@ -402,6 +464,18 @@
   $("transformFlip").addEventListener("click",flip);
   $("transformReset").addEventListener("click",resetTransform);
   document.querySelectorAll("[data-preset]").forEach((button)=>button.addEventListener("click",()=>applyPreset(button.dataset.preset)));
+  document.querySelectorAll("[data-selection-tool]").forEach((button)=>button.addEventListener("click",()=>{state.selectionTool=button.dataset.selectionTool;updateSelectionControls();notify(button.textContent+" selection selected");}));
+  $("brushSize").addEventListener("input",()=>{state.brushSize=Number($("brushSize").value);});
+  $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
+  $("addAreaLayerButton").addEventListener("click",addAreaLayer);
+  selectionOverlay.addEventListener("pointerdown",beginSelection);selectionOverlay.addEventListener("pointermove",moveSelection);selectionOverlay.addEventListener("pointerup",finishSelection);selectionOverlay.addEventListener("pointercancel",finishSelection);
+  $("layerList").addEventListener("click",(event)=>{
+    const selectLayer=event.target.closest("[data-select-layer]");if(selectLayer){setActiveLayer(selectLayer.dataset.selectLayer);return;}
+    if(event.target.closest("[data-select-base]")){setActiveLayer(null);return;}
+    const toggleLayer=event.target.closest("[data-toggle-layer]");if(toggleLayer){const layer=state.layers.find((item)=>item.id===toggleLayer.dataset.toggleLayer);if(layer){recordHistory();layer.visible=!layer.visible;renderLayerList();schedulePreview();}return;}
+    const deleteLayer=event.target.closest("[data-delete-layer]");if(deleteLayer){recordHistory();state.layers=state.layers.filter((item)=>item.id!==deleteLayer.dataset.deleteLayer);if(state.activeLayerId===deleteLayer.dataset.deleteLayer)state.activeLayerId=null;renderLayerList();syncControls();schedulePreview();notify("Area layer removed");return;}
+    if(event.target.closest("[data-toggle-base]")){recordHistory();state.baseVisible=!state.baseVisible;renderLayerList();schedulePreview();}
+  });
   document.querySelectorAll(".rail-tool").forEach((button)=>{
     button.addEventListener("click",()=>{
       const mobile=window.matchMedia("(max-width: 650px)").matches;
@@ -426,4 +500,5 @@
   window.addEventListener("beforeunload",()=>{if(state.objectUrl)URL.revokeObjectURL(state.objectUrl);});
   syncControls();
   updateHistoryButtons();
+  updateSelectionControls();
 })();
