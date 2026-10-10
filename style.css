@@ -387,3 +387,26 @@ select:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+
+/* Selective area editing and adjustment layers */
+.canvas-stack{position:relative;display:inline-grid;line-height:0;max-width:100%;max-height:100%;isolation:isolate}
+.canvas-stack #previewCanvas{grid-area:1/1}
+.canvas-stack #selectionOverlay{position:absolute;inset:0;width:100%;height:100%;max-width:none;max-height:none;box-shadow:none;border-radius:2px;touch-action:none;cursor:crosshair}
+.area-editor{padding:13px;border:1px solid #30352b;border-radius:11px;background:#181b14;margin-bottom:20px}
+.area-editor-heading{font-size:9px;font-weight:800;letter-spacing:1.35px;color:#aeb99b;margin-bottom:11px}
+.selection-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.selection-tool{min-width:0;padding:9px 3px;border:1px solid #343a2c;border-radius:7px;background:#202319;color:#b8bda9;font-size:10px}
+.selection-tool.active{background:#d8ef9b;color:#1b2112;border-color:#d8ef9b;font-weight:750}
+.brush-size-control{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;margin:15px 0 12px;font-size:10px;color:#aeb49f}
+.selection-actions{display:flex;flex-direction:column;gap:7px}
+.selection-actions .button{width:100%;font-size:11px;padding:10px}
+.selection-actions .small-button{min-height:34px;font-size:10px}
+.area-hint{font-size:10px;line-height:1.6;color:#909984;margin:10px 0 0}
+.layer-row.is-active{border-color:#c5e889;background:#252b1d;box-shadow:inset 2px 0 #c5e889}
+.layer-select-button{flex:1;min-width:0;text-align:left;border:0;background:transparent;color:inherit;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 0}
+.layer-select-button small{display:block;font-size:9px;color:#929a83;margin-top:4px}
+.layer-row .layer-delete{width:28px;height:29px;flex:none;font-size:16px;color:#b7bcaa}
+.layer-row .layer-eye{width:29px;height:29px;flex:none}
+.layer-row .layer-eye.is-hidden{color:#747b6a;opacity:.65}
+@media(max-width:650px){.area-editor{padding:11px}.selection-tool{font-size:9px}.selection-actions .button{padding:10px 7px}}
