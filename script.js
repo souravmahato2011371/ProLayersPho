@@ -26,6 +26,8 @@
   let compareMode = false;
   let gestureActive = false;
   let activePreset = "original";
+  let canvasMoveGesture = null;
+  let panelDragGesture = null;
 
   function notify(message) {
     const toast = $("toast");
@@ -78,7 +80,7 @@
     state.layers.slice().reverse().forEach((layer)=>{
       const active=layer.id===state.activeLayerId;
       const index=state.layers.findIndex((item)=>item.id===layer.id);
-      markup+='<div class="layer-row'+(active?' is-active':'')+'" data-layer-row="'+layer.id+'"><div class="layer-thumb layer-adjustment-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'" aria-pressed="'+active+'">'+escapeHtml(layer.name)+'<small>Area adjustment · '+Math.round(layer.opacity*100)+'%</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><details class="layer-options"><summary class="icon-button layer-menu" aria-label="Manage '+escapeHtml(layer.name)+'" title="Layer options">•••</summary><div class="layer-options-menu"><div class="layer-menu-title">'+escapeHtml(layer.name)+'</div><div class="layer-order-actions"><button type="button" data-layer-action="up" data-layer-id="'+layer.id+'" '+(index===state.layers.length-1?'disabled':'')+'>↑ Move up</button><button type="button" data-layer-action="down" data-layer-id="'+layer.id+'" '+(index===0?'disabled':'')+'>↓ Move down</button></div><label class="layer-opacity-control" for="opacity-'+layer.id+'"><span>Opacity <output data-opacity-value="'+layer.id+'">'+Math.round(layer.opacity*100)+'%</output></span><input id="opacity-'+layer.id+'" type="range" min="0" max="100" value="'+Math.round(layer.opacity*100)+'" data-layer-opacity="'+layer.id+'"></label><button type="button" data-layer-action="duplicate" data-layer-id="'+layer.id+'">Duplicate layer</button><button type="button" data-layer-action="rename" data-layer-id="'+layer.id+'">Rename layer</button><button class="layer-danger" type="button" data-layer-action="delete" data-layer-id="'+layer.id+'">Delete layer</button></div></details></div>';
+      markup+='<div class="layer-row'+(active?' is-active':'')+'" data-layer-row="'+layer.id+'"><button class="layer-drag-handle" type="button" data-layer-drag-handle="'+layer.id+'" aria-label="Drag '+escapeHtml(layer.name)+' to reorder" title="Drag to reorder">⠿</button><div class="layer-thumb layer-adjustment-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'" aria-pressed="'+active+'">'+escapeHtml(layer.name)+'<small>Area adjustment · '+Math.round(layer.opacity*100)+'%</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><details class="layer-options"><summary class="icon-button layer-menu" aria-label="Manage '+escapeHtml(layer.name)+'" title="Layer options">•••</summary><div class="layer-options-menu"><div class="layer-menu-title">'+escapeHtml(layer.name)+'</div><div class="layer-order-actions"><button type="button" data-layer-action="up" data-layer-id="'+layer.id+'" '+(index===state.layers.length-1?'disabled':'')+'>↑ Move up</button><button type="button" data-layer-action="down" data-layer-id="'+layer.id+'" '+(index===0?'disabled':'')+'>↓ Move down</button></div><label class="layer-opacity-control" for="opacity-'+layer.id+'"><span>Opacity <output data-opacity-value="'+layer.id+'">'+Math.round(layer.opacity*100)+'%</output></span><input id="opacity-'+layer.id+'" type="range" min="0" max="100" value="'+Math.round(layer.opacity*100)+'" data-layer-opacity="'+layer.id+'"></label><button type="button" data-layer-action="duplicate" data-layer-id="'+layer.id+'">Duplicate layer</button><button type="button" data-layer-action="rename" data-layer-id="'+layer.id+'">Rename layer</button><button class="layer-danger" type="button" data-layer-action="delete" data-layer-id="'+layer.id+'">Delete layer</button></div></details></div>';
     });
     const baseActive=!state.activeLayerId;
     markup+='<div class="layer-row layer-background'+(baseActive?' is-active':'')+'"><div class="layer-thumb"><img src="'+state.sourceUrl+'" alt=""></div><button class="layer-select-button" type="button" data-select-base aria-pressed="'+baseActive+'">'+escapeHtml(state.fileName)+'<small>Background photo · base</small></button><button class="icon-button layer-eye'+(state.baseVisible?"":" is-hidden")+'" type="button" data-toggle-base aria-label="Toggle photo visibility" title="Toggle photo visibility"><svg><use href="#i-eye"/></svg></button><span class="layer-lock" aria-label="Base layer stays at the bottom" title="Base photo">BASE</span></div>';
@@ -123,7 +125,7 @@
     state.layers.push({id,name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
     state.activeLayerId=id;
     clearSelection();
-    renderLayerList();syncControls();schedulePreview();setActivePanel("adjustments");notify("Area layer added above the photo");
+    renderLayerList();syncControls();schedulePreview();notify("Area layer added · drag it on the canvas to reposition");
   }
 
     function clearSelection() {
@@ -148,6 +150,50 @@
     const rect=selectionOverlay.getBoundingClientRect();
     return {x:Math.max(0,Math.min(previewCanvas.width,(event.clientX-rect.left)/rect.width*previewCanvas.width)),y:Math.max(0,Math.min(previewCanvas.height,(event.clientY-rect.top)/rect.height*previewCanvas.height))};
   }
+  function beginCanvasGesture(event) {
+    if (!state.imageElement || !previewCanvas.width) return;
+    if (!state.activeLayerId) { beginSelection(event); return; }
+    const layer = state.layers.find((item) => item.id === state.activeLayerId);
+    if (!layer || !layer.maskCanvas || event.button === 2) return;
+    event.preventDefault();
+    selectionOverlay.setPointerCapture(event.pointerId);
+    const point = selectionPoint(event);
+    recordHistory();
+    canvasMoveGesture = {pointerId:event.pointerId,layerId:layer.id,start:point,original:cloneCanvas(layer.maskCanvas),moved:false};
+    selectionOverlay.classList.add("is-moving-layer");
+  }
+  function moveCanvasGesture(event) {
+    if (!canvasMoveGesture || canvasMoveGesture.pointerId !== event.pointerId) {
+      if (!canvasMoveGesture) moveSelection(event);
+      return;
+    }
+    event.preventDefault();
+    const point = selectionPoint(event);
+    const dx = Math.round(point.x - canvasMoveGesture.start.x);
+    const dy = Math.round(point.y - canvasMoveGesture.start.y);
+    if (!dx && !dy) return;
+    const layer = state.layers.find((item) => item.id === canvasMoveGesture.layerId);
+    if (!layer) return;
+    const moved = document.createElement("canvas");
+    moved.width = canvasMoveGesture.original.width;
+    moved.height = canvasMoveGesture.original.height;
+    moved.getContext("2d").drawImage(canvasMoveGesture.original, dx, dy);
+    layer.maskCanvas = moved;
+    canvasMoveGesture.moved = true;
+    schedulePreview();
+    drawSelectionOverlay();
+  }
+  function finishCanvasGesture(event) {
+    if (canvasMoveGesture) {
+      const moved = canvasMoveGesture.moved;
+      canvasMoveGesture = null;
+      selectionOverlay.classList.remove("is-moving-layer");
+      if (moved) { renderLayerList(); schedulePreview(); notify("Area layer repositioned"); }
+      return;
+    }
+    finishSelection(event);
+  }
+
   function beginSelection(event) {
     if(!state.imageElement||!previewCanvas.width)return;event.preventDefault();selectionOverlay.setPointerCapture(event.pointerId);
     const point=selectionPoint(event);state.selectionMask=document.createElement("canvas");state.selectionMask.width=previewCanvas.width;state.selectionMask.height=previewCanvas.height;
@@ -506,7 +552,7 @@
   $("brushSize").addEventListener("input",()=>{state.brushSize=Number($("brushSize").value);});
   $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
   $("addAreaLayerButton").addEventListener("click",addAreaLayer);
-  selectionOverlay.addEventListener("pointerdown",beginSelection);selectionOverlay.addEventListener("pointermove",moveSelection);selectionOverlay.addEventListener("pointerup",finishSelection);selectionOverlay.addEventListener("pointercancel",finishSelection);
+  selectionOverlay.addEventListener("pointerdown",beginCanvasGesture);selectionOverlay.addEventListener("pointermove",(event)=>{if(canvasMoveGesture)moveCanvasGesture(event);else moveSelection(event);});selectionOverlay.addEventListener("pointerup",finishCanvasGesture);selectionOverlay.addEventListener("pointercancel",finishCanvasGesture);
   let opacityGestureActive=false;
   $("layerList").addEventListener("pointerdown",(event)=>{if(event.target.matches("[data-layer-opacity]")){recordHistory();opacityGestureActive=true;}});
   $("layerList").addEventListener("pointerup",()=>{opacityGestureActive=false;});
@@ -520,6 +566,48 @@
     const output=$("layerList").querySelector('[data-opacity-value="'+layer.id+'"]');if(output)output.value=input.value+"%";
     schedulePreview();
   });
+  $("layerList").addEventListener("pointerdown",(event)=>{
+    const handle=event.target.closest("[data-layer-drag-handle]");
+    if(!handle || event.button===2) return;
+    const row=handle.closest("[data-layer-row]");
+    if(!row) return;
+    event.preventDefault();
+    handle.setPointerCapture(event.pointerId);
+    panelDragGesture={pointerId:event.pointerId,handle,row,layerId:row.dataset.layerRow,startY:event.clientY,moved:false};
+    row.classList.add("is-dragging");
+  });
+  $("layerList").addEventListener("pointermove",(event)=>{
+    if(!panelDragGesture || panelDragGesture.pointerId!==event.pointerId) return;
+    const drag=panelDragGesture;
+    if(Math.abs(event.clientY-drag.startY)>5) drag.moved=true;
+    if(!drag.moved) return;
+    event.preventDefault();
+    const target=document.elementFromPoint(event.clientX,event.clientY)?.closest(".layer-row[data-layer-row]");
+    if(!target || target===drag.row) return;
+    const rect=target.getBoundingClientRect();
+    if(event.clientY < rect.top+rect.height/2) target.parentNode.insertBefore(drag.row,target);
+    else target.parentNode.insertBefore(drag.row,target.nextSibling);
+  });
+  function finishPanelLayerDrag(event) {
+    if(!panelDragGesture || panelDragGesture.pointerId!==event.pointerId) return;
+    const drag=panelDragGesture;
+    panelDragGesture=null;
+    drag.row.classList.remove("is-dragging");
+    if(!drag.moved) return;
+    const topToBottom=Array.from($("layerList").querySelectorAll(".layer-row[data-layer-row]")).map((row)=>row.dataset.layerRow);
+    const bottomToTop=topToBottom.reverse();
+    const oldOrder=state.layers.map((layer)=>layer.id);
+    if(bottomToTop.join("|")===oldOrder.join("|")) { renderLayerList(); return; }
+    recordHistory();
+    const byId=new Map(state.layers.map((layer)=>[layer.id,layer]));
+    state.layers=bottomToTop.map((id)=>byId.get(id)).filter(Boolean);
+    state.activeLayerId=drag.layerId;
+    renderLayerList();
+    schedulePreview();
+    notify("Layer order updated");
+  }
+  $("layerList").addEventListener("pointerup",finishPanelLayerDrag);
+  $("layerList").addEventListener("pointercancel",finishPanelLayerDrag);
   $("layerList").addEventListener("click",(event)=>{
     const action=event.target.closest("[data-layer-action]");
     if(action){
