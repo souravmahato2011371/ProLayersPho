@@ -39,7 +39,7 @@
   }
 
   function snapshot() {
-    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped};
+    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset};
   }
 
   function recordHistory() {
@@ -60,6 +60,7 @@
     state.settings = {...saved.settings};
     state.rotation = saved.rotation;
     state.flipped = saved.flipped;
+    activePreset = saved.activePreset || "";
     syncControls();
     schedulePreview();
     updateHistoryButtons();
@@ -126,6 +127,9 @@
       state.rotation = 0;
       state.flipped = false;
       state.settings = {...defaults};
+      compareMode = false;
+      previewCanvas.hidden = false;
+      $("compareButton").setAttribute("aria-pressed", "false");
       undoStack = [];
       redoStack = [];
       activePreset = "original";
@@ -337,7 +341,6 @@
       const mime=requested;
       if(mime==="image/jpeg"){
         const context=canvas.getContext("2d");
-        const frame=context.getImageData(0,0,canvas.width,canvas.height);
         context.save();
         context.globalCompositeOperation="destination-over";
         context.fillStyle="#ffffff";
