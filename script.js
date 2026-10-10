@@ -44,7 +44,7 @@
     return layer ? layer.settings : state.settings;
   }
   function snapshot() {
-    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:{...layer.settings}})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
+    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:{...layer.settings},maskCanvas:cloneCanvas(layer.maskCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
   }
 
   function recordHistory() {
@@ -73,24 +73,60 @@
   }
   function renderLayerList() {
     const list=$("layerList");
-    if (!state.imageElement) {list.innerHTML='<div class="layer-empty">Open an image to create your first layer.</div>';$("layerCount").textContent="0";return;}
-    let markup='<div class="layer-row'+(state.activeLayerId?"":" is-active")+'"><div class="layer-thumb"><img src="'+state.sourceUrl+'" alt=""></div><button class="layer-select-button" type="button" data-select-base>'+escapeHtml(state.fileName)+'<small>Photo layer</small></button><button class="icon-button layer-eye'+(state.baseVisible?"":" is-hidden")+'" type="button" data-toggle-base aria-label="Toggle photo visibility" title="Toggle photo visibility"><svg><use href="#i-eye"/></svg></button></div>';
-    state.layers.slice().reverse().forEach((layer)=>{const active=layer.id===state.activeLayerId;markup+='<div class="layer-row'+(active?' is-active':'')+'"><div class="layer-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'">'+escapeHtml(layer.name)+'<small>Area adjustment</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><button class="icon-button layer-delete" type="button" data-delete-layer="'+layer.id+'" aria-label="Delete '+escapeHtml(layer.name)+'" title="Delete layer">×</button></div>';});
+    if (!state.imageElement) {list.innerHTML='<div class="layer-empty">Open an image to create your first layer.</div>'; $("layerCount").textContent="0";return;}
+    let markup="";
+    state.layers.slice().reverse().forEach((layer)=>{
+      const active=layer.id===state.activeLayerId;
+      const index=state.layers.findIndex((item)=>item.id===layer.id);
+      markup+='<div class="layer-row'+(active?' is-active':'')+'" data-layer-row="'+layer.id+'"><div class="layer-thumb layer-adjustment-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'" aria-pressed="'+active+'">'+escapeHtml(layer.name)+'<small>Area adjustment · '+Math.round(layer.opacity*100)+'%</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><details class="layer-options"><summary class="icon-button layer-menu" aria-label="Manage '+escapeHtml(layer.name)+'" title="Layer options">•••</summary><div class="layer-options-menu"><div class="layer-menu-title">'+escapeHtml(layer.name)+'</div><div class="layer-order-actions"><button type="button" data-layer-action="up" data-layer-id="'+layer.id+'" '+(index===state.layers.length-1?'disabled':'')+'>↑ Move up</button><button type="button" data-layer-action="down" data-layer-id="'+layer.id+'" '+(index===0?'disabled':'')+'>↓ Move down</button></div><label class="layer-opacity-control" for="opacity-'+layer.id+'"><span>Opacity <output data-opacity-value="'+layer.id+'">'+Math.round(layer.opacity*100)+'%</output></span><input id="opacity-'+layer.id+'" type="range" min="0" max="100" value="'+Math.round(layer.opacity*100)+'" data-layer-opacity="'+layer.id+'"></label><button type="button" data-layer-action="duplicate" data-layer-id="'+layer.id+'">Duplicate layer</button><button type="button" data-layer-action="rename" data-layer-id="'+layer.id+'">Rename layer</button><button class="layer-danger" type="button" data-layer-action="delete" data-layer-id="'+layer.id+'">Delete layer</button></div></details></div>';
+    });
+    const baseActive=!state.activeLayerId;
+    markup+='<div class="layer-row layer-background'+(baseActive?' is-active':'')+'"><div class="layer-thumb"><img src="'+state.sourceUrl+'" alt=""></div><button class="layer-select-button" type="button" data-select-base aria-pressed="'+baseActive+'">'+escapeHtml(state.fileName)+'<small>Background photo · base</small></button><button class="icon-button layer-eye'+(state.baseVisible?"":" is-hidden")+'" type="button" data-toggle-base aria-label="Toggle photo visibility" title="Toggle photo visibility"><svg><use href="#i-eye"/></svg></button><span class="layer-lock" aria-label="Base layer stays at the bottom" title="Base photo">BASE</span></div>';
     list.innerHTML=markup; $("layerCount").textContent=String(state.layers.length+1);
   }
-  function setActiveLayer(id) {
+
+  function moveLayer(id,direction) {
+    const from=state.layers.findIndex((layer)=>layer.id===id), to=from+direction;
+    if(from<0||to<0||to>=state.layers.length)return;
+    recordHistory();
+    const [layer]=state.layers.splice(from,1);state.layers.splice(to,0,layer);
+    state.activeLayerId=id;renderLayerList();schedulePreview();notify(direction>0?"Layer moved up":"Layer moved down");
+  }
+  function duplicateLayer(id) {
+    const index=state.layers.findIndex((layer)=>layer.id===id);if(index<0)return;
+    recordHistory();const source=state.layers[index];state.layerCounter+=1;
+    const copy={...source,id:"area-"+state.layerCounter,name:source.name+" copy",settings:{...source.settings},maskCanvas:cloneCanvas(source.maskCanvas),visible:source.visible,opacity:source.opacity};
+    state.layers.splice(index+1,0,copy);state.activeLayerId=copy.id;syncControls();renderLayerList();schedulePreview();notify("Layer duplicated");
+  }
+  function renameLayer(id) {
+    const layer=state.layers.find((item)=>item.id===id);if(!layer)return;
+    const proposed=window.prompt("Rename layer",layer.name);if(proposed===null)return;
+    const name=proposed.trim();if(!name){notify("Layer name cannot be empty");return;}
+    recordHistory();layer.name=name;renderLayerList();notify("Layer renamed");
+  }
+  function deleteLayer(id) {
+    const index=state.layers.findIndex((layer)=>layer.id===id);if(index<0)return;
+    recordHistory();state.layers.splice(index,1);
+    if(state.activeLayerId===id)state.activeLayerId=state.layers.length?state.layers[state.layers.length-1].id:null;
+    syncControls();renderLayerList();schedulePreview();notify("Area layer removed");
+  }
+
+    function setActiveLayer(id) {
     state.activeLayerId=id; activePreset=""; syncControls(); renderLayerList(); schedulePreview();
     if (!$("adjustmentsPanel").hidden) $("panelTitle").textContent=id?"Tune layer":"Tune image";
     notify(id?"Area layer selected":"Photo layer selected");
   }
   function addAreaLayer() {
-    if (!state.imageElement || !state.selectionMask) {notify("Select an area first.");return;}
-    recordHistory();
-    state.layerCounter+=1;
-    state.layers.push({id:"area-"+state.layerCounter,name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
-    state.activeLayerId="area-"+state.layerCounter; renderLayerList(); syncControls(); schedulePreview(); setActivePanel("adjustments"); notify("Area adjustment layer added");
+    if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
+    recordHistory();state.layerCounter+=1;
+    const id="area-"+state.layerCounter;
+    state.layers.push({id,name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
+    state.activeLayerId=id;
+    clearSelection();
+    renderLayerList();syncControls();schedulePreview();setActivePanel("adjustments");notify("Area layer added above the photo");
   }
-  function clearSelection() {
+
+    function clearSelection() {
     state.selectionMask=null;state.selectionStart=null;state.selectionCurrent=null;state.selectionDrawing=false;
     const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);updateSelectionControls();
   }
@@ -144,15 +180,15 @@
     state.settings = {...saved.settings};
     state.rotation = saved.rotation;
     state.flipped = saved.flipped;
-    state.layers = (saved.layers || []).map((layer)=>({...layer,settings:{...layer.settings}}));
+    state.layers = (saved.layers || []).map((layer)=>({...layer,settings:{...layer.settings},maskCanvas:cloneCanvas(layer.maskCanvas)}));
     state.activeLayerId = saved.activeLayerId || null;
     state.baseVisible = saved.baseVisible !== false;
     state.layerCounter = saved.layerCounter || state.layers.length;
     activePreset = saved.activePreset || "";
-    syncControls(); renderLayerList(); schedulePreview(); updateHistoryButtons();
+    syncControls();renderLayerList();schedulePreview();updateHistoryButtons();
   }
 
-  function undo() {
+    function undo() {
     if (!undoStack.length) return;
     redoStack.push(snapshot());
     restoreSnapshot(undoStack.pop());
@@ -469,14 +505,38 @@
   $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
   $("addAreaLayerButton").addEventListener("click",addAreaLayer);
   selectionOverlay.addEventListener("pointerdown",beginSelection);selectionOverlay.addEventListener("pointermove",moveSelection);selectionOverlay.addEventListener("pointerup",finishSelection);selectionOverlay.addEventListener("pointercancel",finishSelection);
+  let opacityGestureActive=false;
+  $("layerList").addEventListener("pointerdown",(event)=>{if(event.target.matches("[data-layer-opacity]")){recordHistory();opacityGestureActive=true;}});
+  $("layerList").addEventListener("pointerup",()=>{opacityGestureActive=false;});
+  $("layerList").addEventListener("pointercancel",()=>{opacityGestureActive=false;});
+  $("layerList").addEventListener("focusout",(event)=>{if(event.target.matches("[data-layer-opacity]"))opacityGestureActive=false;});
+  $("layerList").addEventListener("input",(event)=>{
+    const input=event.target.closest("[data-layer-opacity]");if(!input)return;
+    if(!opacityGestureActive){recordHistory();opacityGestureActive=true;}
+    const layer=state.layers.find((item)=>item.id===input.dataset.layerOpacity);if(!layer)return;
+    layer.opacity=Number(input.value)/100;
+    const output=$("layerList").querySelector('[data-opacity-value="'+layer.id+'"]');if(output)output.value=input.value+"%";
+    schedulePreview();
+  });
   $("layerList").addEventListener("click",(event)=>{
-    const selectLayer=event.target.closest("[data-select-layer]");if(selectLayer){setActiveLayer(selectLayer.dataset.selectLayer);return;}
+    const action=event.target.closest("[data-layer-action]");
+    if(action){
+      const id=action.dataset.layerId;
+      if(action.dataset.layerAction==="up")moveLayer(id,1);
+      else if(action.dataset.layerAction==="down")moveLayer(id,-1);
+      else if(action.dataset.layerAction==="duplicate")duplicateLayer(id);
+      else if(action.dataset.layerAction==="rename")renameLayer(id);
+      else if(action.dataset.layerAction==="delete")deleteLayer(id);
+      return;
+    }
+    const selectLayer=event.target.closest("[data-select-layer]");
+    if(selectLayer){setActiveLayer(selectLayer.dataset.selectLayer);return;}
     if(event.target.closest("[data-select-base]")){setActiveLayer(null);return;}
-    const toggleLayer=event.target.closest("[data-toggle-layer]");if(toggleLayer){const layer=state.layers.find((item)=>item.id===toggleLayer.dataset.toggleLayer);if(layer){recordHistory();layer.visible=!layer.visible;renderLayerList();schedulePreview();}return;}
-    const deleteLayer=event.target.closest("[data-delete-layer]");if(deleteLayer){recordHistory();state.layers=state.layers.filter((item)=>item.id!==deleteLayer.dataset.deleteLayer);if(state.activeLayerId===deleteLayer.dataset.deleteLayer)state.activeLayerId=null;renderLayerList();syncControls();schedulePreview();notify("Area layer removed");return;}
+    const toggleLayer=event.target.closest("[data-toggle-layer]");
+    if(toggleLayer){const layer=state.layers.find((item)=>item.id===toggleLayer.dataset.toggleLayer);if(layer){recordHistory();layer.visible=!layer.visible;renderLayerList();schedulePreview();}return;}
     if(event.target.closest("[data-toggle-base]")){recordHistory();state.baseVisible=!state.baseVisible;renderLayerList();schedulePreview();}
   });
-  document.querySelectorAll(".rail-tool").forEach((button)=>{
+    document.querySelectorAll(".rail-tool").forEach((button)=>{
     button.addEventListener("click",()=>{
       const mobile=window.matchMedia("(max-width: 650px)").matches;
       const panel=$("propertiesPanel");
