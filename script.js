@@ -68,7 +68,7 @@
   function updateSelectionControls() {
     $("clearSelectionButton").disabled=!state.selectionMask;
     $("addAreaLayerButton").disabled=!state.selectionMask || !state.imageElement;
-    $("selectionStatus").textContent=state.selectionMask ? "Area selected. Add an area layer, then use Edit to tune only this region." : "Open a photo, then draw a shape or brush over the area you want to edit.";
+    $("selectionStatus").textContent=state.selectionMask ? "Area selected. Add an area layer, then use Edit to tune only this region." : (state.activeLayerId ? "Drag the selected area on the canvas to reposition it. Select the base photo below to draw a new area." : "Draw a shape or brush over the photo, then add an area layer.");
     document.querySelectorAll("[data-selection-tool]").forEach((button)=>{const active=button.dataset.selectionTool===state.selectionTool;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   }
   function renderLayerList() {
@@ -135,7 +135,9 @@
     if(selectionOverlay.width!==previewCanvas.width)selectionOverlay.width=previewCanvas.width;
     if(selectionOverlay.height!==previewCanvas.height)selectionOverlay.height=previewCanvas.height;
     const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);
-    if(state.selectionMask){ctx.save();ctx.globalAlpha=.25;ctx.drawImage(state.selectionMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
+    const activeLayer=state.layers.find((layer)=>layer.id===state.activeLayerId);
+    const visibleMask=state.selectionMask || (activeLayer && activeLayer.visible ? activeLayer.maskCanvas : null);
+    if(visibleMask){ctx.save();ctx.globalAlpha=.25;ctx.drawImage(visibleMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
     if(state.selectionDrawing&&state.selectionStart&&state.selectionCurrent&&state.selectionTool!=="brush"){
       const a=state.selectionStart,b=state.selectionCurrent;ctx.save();ctx.strokeStyle="#d8ef9b";ctx.lineWidth=Math.max(1,selectionOverlay.width/800*1.5);ctx.setLineDash([7,4]);
       if(state.selectionTool==="rectangle")ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
