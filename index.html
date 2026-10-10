@@ -17,6 +17,8 @@
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m20.5 15-5-5L6 19"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
     <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5M10.8 7.5v6.6M7.5 10.8h6.6"/></symbol>
+    <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3v18l5-5 3.5 5 3-1.8-3.5-5H20L5 3Z"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M20 12a8 8 0 1 0 1 4"/></symbol>
     <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M5 6l-3 6 3 6M19 6l3 6-3 6M8 6h-3M8 18h-3M16 6h3M16 18h3"/></symbol>
@@ -61,6 +63,11 @@
         </div>
       </div>
       <div class="canvas-stage" id="canvasStage">
+        <div class="canvas-toolbox" role="toolbar" aria-label="Canvas tools">
+          <button class="canvas-tool" type="button" data-canvas-tool="move" aria-pressed="false" title="Move canvas or selected area"><svg><use href="#i-move"/></svg><span>Move</span></button>
+          <button class="canvas-tool" type="button" id="zoomCanvasButton" title="Zoom canvas" aria-label="Zoom canvas"><svg><use href="#i-zoom"/></svg><span id="zoomLabel">100%</span></button>
+          <button class="canvas-tool active" type="button" data-canvas-tool="select" aria-pressed="true" title="Select an area"><svg><use href="#i-select"/></svg><span>Select</span></button>
+        </div>
         <div class="empty-state" id="emptyState">
           <div class="empty-art"><svg><use href="#i-image"/></svg></div>
           <h1>Your canvas, your vision.</h1>
