@@ -86,6 +86,78 @@
     <aside class="properties-panel" id="propertiesPanel" aria-label="Properties">
       <div class="panel-heading"><div><span class="eyebrow">PHOTO STUDIO</span><h2 id="panelTitle">Tune image</h2></div><button class="icon-button panel-reset" id="resetButton" type="button" aria-label="Reset all edits" title="Reset adjustments" disabled><svg><use href="#i-reset"/></svg></button></div>
       <div class="panel-content" id="adjustmentsPanel">
+        <section class="tool-library" aria-label="Edit tools">
+          <div class="tool-library-top"><span class="section-label">EDIT TOOLS</span><span class="tool-library-hint">Choose a tool</span></div>
+          <label class="tool-search"><svg><use href="#i-zoom"/></svg><input id="editToolSearch" type="search" placeholder="Find a tool…" autocomplete="off" aria-label="Search edit tools"></label>
+          <div class="tool-category-list" id="editToolCategories">
+            <details class="tool-category" open>
+              <summary><span>Adjustments</span><small>Light, colour &amp; detail</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="exposure"><span>Tune image</span><small>Light and colour</small></button>
+                <button class="edit-tool" data-tool-target="structure"><span>Details</span><small>Structure &amp; sharpness</small></button>
+                <button class="edit-tool" data-tool-target="ambience"><span>Dehaze</span><small>Atmosphere</small></button>
+                <button class="edit-tool" data-tool-target="contrast"><span>Tonal contrast</span><small>Contrast control</small></button>
+                <button class="edit-tool" data-tool-target="contrast"><span>Curves</span><small>Tonal control</small></button>
+                <button class="edit-tool" data-tool-target="warmth"><span>White balance</span><small>Temperature &amp; tint</small></button>
+                <button class="edit-tool" data-tool-target="saturation"><span>Colour</span><small>Saturation &amp; hue</small></button>
+                <button class="edit-tool" data-tool-target="vibrance"><span>Colour grade</span><small>Colour intensity</small></button>
+              </div>
+            </details>
+            <details class="tool-category">
+              <summary><span>Retouch &amp; Select</span><small>Local edits</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="selection" data-open-panel="layers"><span>Selective</span><small>Edit a chosen area</small></button>
+                <button class="edit-tool" data-tool-target="selection" data-open-panel="layers"><span>Brush</span><small>Paint a selection</small></button>
+                <button class="edit-tool" data-tool-target="healing"><span>Healing</span><small>Remove small distractions</small></button>
+                <button class="edit-tool" data-tool-target="portrait"><span>Portrait</span><small>Portrait adjustments</small></button>
+                <button class="edit-tool" data-tool-target="headpose"><span>Head pose</span><small>Portrait geometry</small></button>
+              </div>
+            </details>
+            <details class="tool-category">
+              <summary><span>Optics &amp; Blur</span><small>Lens and edge effects</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="lensblur"><span>Lens blur</span><small>Depth-style blur</small></button>
+                <button class="edit-tool" data-tool-target="vignette"><span>Vignette</span><small>Edge shading</small></button>
+                <button class="edit-tool" data-tool-target="motionblur"><span>Motion blur</span><small>Directional blur</small></button>
+                <button class="edit-tool" data-tool-target="chromatic"><span>Chromatic aberration</span><small>Colour fringing</small></button>
+              </div>
+            </details>
+            <details class="tool-category">
+              <summary><span>Creative Effects</span><small>Texture and glow</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="grain"><span>Grainy film</span><small>Film texture</small></button>
+                <button class="edit-tool" data-tool-target="bloom"><span>Bloom</span><small>Soft highlights</small></button>
+                <button class="edit-tool" data-tool-target="halation"><span>Halation</span><small>Highlight glow</small></button>
+                <button class="edit-tool" data-tool-target="glamour"><span>Glamour glow</span><small>Soft-focus finish</small></button>
+                <button class="edit-tool" data-tool-target="hdr"><span>HDR-scape</span><small>Local contrast</small></button>
+                <button class="edit-tool" data-tool-target="doubleexposure"><span>Double exposure</span><small>Blend two images</small></button>
+              </div>
+            </details>
+            <details class="tool-category">
+              <summary><span>Looks &amp; Overlays</span><small>Styles, frames and text</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="vintage"><span>Vintage</span><small>Classic film look</small></button>
+                <button class="edit-tool" data-tool-target="blackwhite"><span>Black and white</span><small>Monochrome</small></button>
+                <button class="edit-tool" data-tool-target="retrolux"><span>Retrolux</span><small>Retro colour</small></button>
+                <button class="edit-tool" data-tool-target="drama"><span>Drama</span><small>Bold contrast</small></button>
+                <button class="edit-tool" data-tool-target="noir"><span>Noir</span><small>Monochrome mood</small></button>
+                <button class="edit-tool" data-tool-target="grunge"><span>Grunge</span><small>Rough texture</small></button>
+                <button class="edit-tool" data-tool-target="frames"><span>Frames</span><small>Image borders</small></button>
+                <button class="edit-tool" data-tool-target="text"><span>Text</span><small>Type on your image</small></button>
+              </div>
+            </details>
+            <details class="tool-category">
+              <summary><span>Geometry &amp; Canvas</span><small>Crop and perspective</small></summary>
+              <div class="tool-grid">
+                <button class="edit-tool" data-tool-target="crop" data-open-panel="transform"><span>Crop</span><small>Trim the image</small></button>
+                <button class="edit-tool" data-tool-target="perspective" data-open-panel="transform"><span>Perspective</span><small>Correct geometry</small></button>
+                <button class="edit-tool" data-tool-target="expand" data-open-panel="transform"><span>Expand</span><small>Extend the canvas</small></button>
+              </div>
+            </details>
+          </div>
+          <p class="tool-library-footnote">Tools with existing controls open them directly. Other tools are organized here for implementation without changing the workspace design.</p>
+        </section>
+
         <section class="settings-section">
           <div class="section-label"><svg><use href="#i-sliders"/></svg> Light</div>
           <div class="range-control"><div class="range-label"><label for="exposure">Exposure</label><output id="exposureValue" for="exposure">0</output></div><input id="exposure" type="range" min="-100" max="100" value="0"><div class="range-help"><span>Darker</span><span>Brighter</span></div></div>
@@ -161,6 +233,7 @@
   <input id="fileInput" type="file" accept="image/*" hidden>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="script.js"></script>
+  <script src="tool-library.js"></script>
   <script>document.getElementById("emptyOpenButton").addEventListener("click",function(){document.getElementById("openImageButton").click();});</script>
 </body>
 </html>
