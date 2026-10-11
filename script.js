@@ -71,6 +71,16 @@
     const copy=document.createElement("canvas"); copy.width=source.width; copy.height=source.height;
     copy.getContext("2d").drawImage(source,0,0); return copy;
   }
+  function normalizeLayerMask(mask,width,height) {
+    const normalized=document.createElement("canvas");
+    normalized.width=width;normalized.height=height;
+    if(mask&&width&&height){
+      const context=normalized.getContext("2d");
+      context.imageSmoothingEnabled=false;
+      context.drawImage(mask,0,0,width,height);
+    }
+    return normalized;
+  }
   function updateSelectionControls() {
     $("clearSelectionButton").disabled=!state.selectionMask;
     $("addAreaLayerButton").disabled=!state.selectionMask || !state.imageElement;
@@ -195,7 +205,7 @@
   }
   function selectionPoint(event) {
     const rect=selectionOverlay.getBoundingClientRect();
-    return {x:Math.max(0,Math.min(previewCanvas.width,(event.clientX-rect.left)/rect.width*previewCanvas.width)),y:Math.max(0,Math.min(previewCanvas.height,(event.clientY-rect.top)/rect.height*previewCanvas.height))};
+    return {x:Math.max(0,Math.min(previewCanvas.width,(event.clientX-rect.left)/Math.max(1,rect.width)*previewCanvas.width)),y:Math.max(0,Math.min(previewCanvas.height,(event.clientY-rect.top)/Math.max(1,rect.height)*previewCanvas.height))};
   }
   function beginCanvasGesture(event) {
     if (!state.imageElement || !previewCanvas.width) return;
@@ -206,9 +216,19 @@
     if (!layer || !layer.maskCanvas || event.button === 2) return;
     event.preventDefault();
     selectionOverlay.setPointerCapture(event.pointerId);
-    const point = selectionPoint(event);
+    const rect=selectionOverlay.getBoundingClientRect();
+    const original=normalizeLayerMask(layer.maskCanvas,previewCanvas.width,previewCanvas.height);
     recordHistory();
-    canvasMoveGesture = {pointerId:event.pointerId,layerId:layer.id,start:point,original:cloneCanvas(layer.maskCanvas),moved:false};
+    canvasMoveGesture = {
+      pointerId:event.pointerId,
+      layerId:layer.id,
+      startClientX:event.clientX,
+      startClientY:event.clientY,
+      scaleX:previewCanvas.width/Math.max(1,rect.width),
+      scaleY:previewCanvas.height/Math.max(1,rect.height),
+      original,
+      moved:false
+    };
     selectionOverlay.classList.add("is-moving-layer");
     return;
     }
@@ -220,9 +240,11 @@
       return;
     }
     event.preventDefault();
-    const point = selectionPoint(event);
-    const dx = Math.round(point.x - canvasMoveGesture.start.x);
-    const dy = Math.round(point.y - canvasMoveGesture.start.y);
+    // Use the original pointer-down point and the displayed canvas scale.
+    // Do not clamp pointer coordinates to the image bounds: clamping creates
+    // an invisible drag wall and causes the mask to lag behind the finger.
+    const dx=Math.round((event.clientX-canvasMoveGesture.startClientX)*canvasMoveGesture.scaleX);
+    const dy=Math.round((event.clientY-canvasMoveGesture.startClientY)*canvasMoveGesture.scaleY);
     if (!dx && !dy) return;
     const layer = state.layers.find((item) => item.id === canvasMoveGesture.layerId);
     if (!layer) return;
