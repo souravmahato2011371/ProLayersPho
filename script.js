@@ -612,9 +612,16 @@
         const extension=actualMime==="image/jpeg"?"jpg":actualMime==="image/webp"?"webp":"png";
         const url=URL.createObjectURL(blob);
         const link=document.createElement("a");
-        const baseName=state.fileName.replace(/\.[^.]+$/,"")||"prolayerspho-image";
+        const sourceBase=state.fileName.replace(/\.[^.]+$/,"")||"prolayerspho-image";
+        const requestedName=($("exportFilename").value||"").trim();
+        const cleanName=(requestedName||sourceBase+"-edited")
+          .replace(/\.[^.]+$/,"")
+          .replace(/[<>:"/\\|?*\u0000-\u001f]/g,"-")
+          .replace(/\s+/g," ")
+          .replace(/[. ]+$/,"")
+          .trim()||"prolayerspho-image";
         link.href=url;
-        link.download=baseName+"-edited."+extension;
+        link.download=cleanName+"."+extension;
         document.body.appendChild(link);
         link.click();
         link.remove();
