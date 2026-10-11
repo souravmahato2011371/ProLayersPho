@@ -13,7 +13,6 @@
         if (match) visible++;
       });
       category.hidden = visible === 0;
-      if (query && visible) category.open = true;
     });
   };
   search.addEventListener("input", searchable);
