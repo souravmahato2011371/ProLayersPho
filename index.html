@@ -21,6 +21,7 @@
     <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3v18l5-5 3.5 5 3-1.8-3.5-5H20L5 3Z"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M20 12a8 8 0 1 0 1 4"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 3v13a2 2 0 0 0 2 2h13"/><path d="M18 21V8a2 2 0 0 0-2-2H3"/></symbol>
     <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18M5 6l-3 6 3 6M19 6l3 6-3 6M8 6h-3M8 18h-3M16 6h3M16 18h3"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5"/><path d="M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
@@ -148,7 +149,8 @@
         <button class="wide-action" id="transformRotate" type="button" disabled><svg><use href="#i-rotate"/></svg> Rotate 90°</button>
         <button class="wide-action" id="transformFlip" type="button" disabled><svg><use href="#i-flip"/></svg> Flip horizontally</button>
         <button class="wide-action" id="transformReset" type="button" disabled><svg><use href="#i-reset"/></svg> Reset rotation &amp; flip</button>
-        <div class="panel-note">Rotation and flipping are baked into the exported image. Crop and perspective tools will be added in a later milestone.</div>
+        <button class="wide-action" id="cropSelectionButton" type="button" disabled><svg><use href="#i-crop"/></svg> Crop to rectangle selection</button>
+        <div class="panel-note">To crop, open Layers, choose Rectangle, draw the area you want to keep, then use Crop to selection. The crop can be undone.</div>
       </div>
     </aside>
   </main>
