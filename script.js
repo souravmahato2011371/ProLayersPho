@@ -267,14 +267,27 @@
     state.selectionDrawing=false;state.selectionStart=null;state.selectionCurrent=null;drawSelectionOverlay();updateSelectionControls();notify("Area selected");
   }
   function applyAreaLayers(base) {
-    const baseContext=base.getContext("2d");if(!state.baseVisible)baseContext.clearRect(0,0,base.width,base.height);
-    state.layers.forEach((layer)=>{if(!layer.visible||!layer.maskCanvas)return;
-      const adjusted=document.createElement("canvas");adjusted.width=base.width;adjusted.height=base.height;
-      const adjustedContext=adjusted.getContext("2d",{willReadFrequently:true});adjustedContext.drawImage(base,0,0);
+    const baseContext=base.getContext("2d");
+    if(!state.baseVisible)baseContext.clearRect(0,0,base.width,base.height);
+
+    // Every adjustment layer starts from the same untouched global edit result.
+    // This prevents one area's settings from becoming the input to the next layer,
+    // which made overlapping masks interfere with each other.
+    const layerSource=cloneCanvas(base);
+    state.layers.forEach((layer)=>{
+      if(!layer.visible||!layer.maskCanvas||layer.opacity<=0)return;
+      const adjusted=cloneCanvas(layerSource);
       if(!processCanvas(adjusted,layer.settings))return;
-      adjustedContext.globalCompositeOperation="destination-in";adjustedContext.drawImage(layer.maskCanvas,0,0,base.width,base.height);adjustedContext.globalCompositeOperation="source-over";
-      baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(adjusted,0,0);baseContext.restore();
-    });return base;
+      const adjustedContext=adjusted.getContext("2d");
+      adjustedContext.globalCompositeOperation="destination-in";
+      adjustedContext.drawImage(layer.maskCanvas,0,0,adjusted.width,adjusted.height);
+      adjustedContext.globalCompositeOperation="source-over";
+      baseContext.save();
+      baseContext.globalAlpha=layer.opacity;
+      baseContext.drawImage(adjusted,0,0);
+      baseContext.restore();
+    });
+    return base;
   }
 
   function restoreSnapshot(saved) {
