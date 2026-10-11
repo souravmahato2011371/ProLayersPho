@@ -47,7 +47,7 @@
 
   function editingSettings() {
     const layer=state.layers.find((item)=>item.id===state.activeLayerId);
-    return layer && layer.type!=="pixel" ? layer.settings : state.settings;
+    return layer && layer.settings ? layer.settings : state.settings;
   }
   function snapshot() {
     return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
@@ -142,15 +142,29 @@
   function createPixelLayerFromSelection() {
     if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
     const source=renderImage(1100,false);if(!source){notify("Could not create pixel layer.");return;}
-    const pixels=document.createElement("canvas");pixels.width=source.width;pixels.height=source.height;
-    const context=pixels.getContext("2d");context.drawImage(source,0,0);
+    const masked=document.createElement("canvas");masked.width=source.width;masked.height=source.height;
+    const context=masked.getContext("2d");context.drawImage(source,0,0);
     context.globalCompositeOperation="destination-in";
     context.drawImage(normalizeLayerMask(state.selectionMask,source.width,source.height),0,0);
     context.globalCompositeOperation="source-over";
+    // Crop to the selected pixels so the layer can be positioned independently.
+    const frame=context.getImageData(0,0,masked.width,masked.height).data;
+    let left=masked.width,top=masked.height,right=-1,bottom=-1;
+    for(let y=0;y<masked.height;y++){
+      for(let x=0;x<masked.width;x++){
+        if(frame[(y*masked.width+x)*4+3]>0){if(x<left)left=x;if(x>right)right=x;if(y<top)top=y;if(y>bottom)bottom=y;}
+      }
+    }
+    if(right<left||bottom<top){notify("The selected area contains no pixels.");return;}
+    const pixels=document.createElement("canvas");pixels.width=right-left+1;pixels.height=bottom-top+1;
+    pixels.getContext("2d").drawImage(masked,left,top,pixels.width,pixels.height,0,0,pixels.width,pixels.height);
     recordHistory();state.layerCounter+=1;const id="pixel-"+state.layerCounter;
-    state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,offsetX:0,offsetY:0,visible:true,opacity:1});
+    // Start the cropped layer in the centre of the canvas.
+    const offsetX=Math.round((source.width-pixels.width)/2);
+    const offsetY=Math.round((source.height-pixels.height)/2);
+    state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,settings:{...defaults},offsetX,offsetY,visible:true,opacity:1});
     state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();
-    notify("Pixel layer created · original photo stays underneath");
+    notify("Pixel layer created in the centre · original photo stays underneath");
   }
 
     function clearSelection() {
@@ -164,7 +178,7 @@
     const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);
     const activeLayer=state.layers.find((layer)=>layer.id===state.activeLayerId);
     const visibleMask=state.selectionMask || (activeLayer && activeLayer.visible ? (activeLayer.type==="pixel" ? activeLayer.pixelCanvas : activeLayer.maskCanvas) : null);
-    if(visibleMask){ctx.save();ctx.globalAlpha=.25;ctx.imageSmoothingEnabled=false;if(activeLayer&&!state.selectionMask)ctx.drawImage(visibleMask,activeLayer.offsetX||0,activeLayer.offsetY||0,selectionOverlay.width,selectionOverlay.height);else ctx.drawImage(visibleMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
+    if(visibleMask){ctx.save();ctx.globalAlpha=.25;ctx.imageSmoothingEnabled=false;if(activeLayer&&!state.selectionMask)ctx.drawImage(visibleMask,activeLayer.offsetX||0,activeLayer.offsetY||0);else ctx.drawImage(visibleMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
     if(state.selectionDrawing&&state.selectionStart&&state.selectionCurrent&&state.selectionTool!=="brush"){
       const a=state.selectionStart,b=state.selectionCurrent;ctx.save();ctx.strokeStyle="#d8ef9b";ctx.lineWidth=Math.max(1,selectionOverlay.width/800*1.5);ctx.setLineDash([7,4]);
       if(state.selectionTool==="rectangle")ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
@@ -306,12 +320,16 @@
     const layerSource=cloneCanvas(base);
     state.layers.forEach((layer)=>{
       if(!layer.visible||layer.opacity<=0)return;
-      if(layer.type==="pixel"&&layer.pixelCanvas){baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(layer.pixelCanvas,layer.offsetX||0,layer.offsetY||0);baseContext.restore();return;}
+      if(layer.type==="pixel"&&layer.pixelCanvas){
+        const tuned=cloneCanvas(layer.pixelCanvas);
+        if(layer.settings)processCanvas(tuned,layer.settings);
+        baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(tuned,layer.offsetX||0,layer.offsetY||0);baseContext.restore();return;
+      }
       if(!layer.maskCanvas||!layer.settings)return;
       const adjusted=cloneCanvas(layerSource);if(!processCanvas(adjusted,layer.settings))return;
       const shiftedMask=document.createElement("canvas");shiftedMask.width=adjusted.width;shiftedMask.height=adjusted.height;
       const maskContext=shiftedMask.getContext("2d");maskContext.imageSmoothingEnabled=false;
-      maskContext.drawImage(layer.maskCanvas,layer.offsetX||0,layer.offsetY||0,adjusted.width,adjusted.height);
+      maskContext.drawImage(layer.maskCanvas,layer.offsetX||0,layer.offsetY||0);
       const adjustedContext=adjusted.getContext("2d");adjustedContext.globalCompositeOperation="destination-in";
       adjustedContext.drawImage(shiftedMask,0,0);adjustedContext.globalCompositeOperation="source-over";
       baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(adjusted,0,0);baseContext.restore();
