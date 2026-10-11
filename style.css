@@ -1131,3 +1131,14 @@ button:disabled{filter:saturate(.55)}
 .tool-library-footnote{margin:12px 2px 0;color:var(--muted);font-size:10px;line-height:1.55}
 .tool-section-highlight{outline:1px solid var(--accent-strong);outline-offset:5px;border-radius:8px}
 @media(max-width:760px){.tool-library{margin-bottom:18px;padding-bottom:16px}.tool-grid{gap:6px;padding:8px}.edit-tool{min-height:52px;padding:9px}.tool-category-heading{padding:11px}}
+
+/* Notification contrast fix: keep toast text readable in every theme. */
+.toast,
+.toast.show {
+  color: #ffffff !important;
+}
+.toast button,
+.toast a,
+.toast span {
+  color: #ffffff !important;
+}
