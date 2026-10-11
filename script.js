@@ -585,7 +585,7 @@
       button.classList.toggle("active",active);
       button.setAttribute("aria-pressed",String(active));
     });
-    if(window.matchMedia("(max-width: 760px)").matches) $("propertiesPanel").classList.add("mobile-open");
+    if(window.matchMedia("(max-width: 760px), (orientation: portrait) and (pointer: coarse)").matches) $("propertiesPanel").classList.add("mobile-open");
   }
 
   function exportImage() {
@@ -753,7 +753,7 @@
   });
     document.querySelectorAll(".rail-tool").forEach((button)=>{
     button.addEventListener("click",()=>{
-      const mobile=window.matchMedia("(max-width: 760px)").matches;
+      const mobile=window.matchMedia("(max-width: 760px), (orientation: portrait) and (pointer: coarse)").matches;
       const panel=$("propertiesPanel");
       const wasOpen=panel.classList.contains("mobile-open")&&button.classList.contains("active");
       setActivePanel(button.dataset.panel);
