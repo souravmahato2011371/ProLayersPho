@@ -136,11 +136,11 @@
             <button class="selection-tool" type="button" data-selection-tool="brush" aria-pressed="false">Brush</button>
           </div>
           <div class="brush-size-control"><label for="brushSize">Brush size</label><input id="brushSize" type="range" min="8" max="100" value="32"></div>
-          <div class="selection-actions"><button class="small-button" id="clearSelectionButton" type="button" disabled>Clear area</button><button class="button button-primary" id="addAreaLayerButton" type="button" disabled>+ Add area layer</button></div>
+          <div class="selection-actions"><button class="small-button" id="clearSelectionButton" type="button" disabled>Clear area</button><button class="button button-primary" id="createPixelLayerButton" type="button" disabled>+ Create pixel layer</button><button class="small-button" id="addAreaLayerButton" type="button" disabled>+ Add adjustment</button></div>
           <p class="area-hint" id="selectionStatus">Open a photo, then draw a shape or brush over the area you want to edit.</p>
         </div>
         <div class="layer-list" id="layerList"><div class="layer-empty">Open an image to create your first layer.</div></div>
-        <div class="panel-note">Select an area, add a layer, then open Edit and adjust its settings. Each area layer can be edited, hidden, or removed independently.</div>
+        <div class="panel-note">Create a pixel layer to move selected photo content independently, or add an adjustment layer to edit only that region. Both types can be reordered, hidden, duplicated, and removed.</div>
       </div>
       <div class="panel-content" id="transformPanel" hidden>
         <div class="section-label"><svg><use href="#i-move"/></svg> Transform image</div>
