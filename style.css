@@ -766,7 +766,7 @@ button:disabled{filter:saturate(.55)}
 
 
 /* Responsive layout repair · phone + portrait tablet */
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: portrait) and (pointer: coarse) {
   html, body {
     width: 100%;
     min-width: 0;
@@ -974,7 +974,7 @@ button:disabled{filter:saturate(.55)}
 
 
 /* Dedicated portrait-phone layout: keep the photo central and controls compact */
-@media (max-width: 760px) and (orientation: portrait) {
+@media (max-width: 760px) and (orientation: portrait), (orientation: portrait) and (pointer: coarse) {
   body { overflow: hidden; }
   .topbar {
     height: calc(54px + env(safe-area-inset-top));
