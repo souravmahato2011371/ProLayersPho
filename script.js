@@ -84,6 +84,7 @@
   function updateSelectionControls() {
     $("clearSelectionButton").disabled=!state.selectionMask;
     $("addAreaLayerButton").disabled=!state.selectionMask || !state.imageElement;
+    $("createPixelLayerButton").disabled=!state.selectionMask || !state.imageElement;
     $("selectionStatus").textContent=state.selectionMask ? "Area selected. Add an area layer, then use Edit to tune only this region." : (state.activeLayerId ? "Drag the selected area on the canvas to reposition it. Select the base photo below to draw a new area." : "Draw a shape or brush over the photo, then add an area layer.");
     document.querySelectorAll("[data-selection-tool]").forEach((button)=>{const active=button.dataset.selectionTool===state.selectionTool;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   }
