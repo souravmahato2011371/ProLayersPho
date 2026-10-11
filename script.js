@@ -8,14 +8,15 @@
   const emptyState = $("emptyState");
   const canvasStage = $("canvasStage");
   const exportButton = $("exportButton");
-  const sliderIds = ["exposure","brightness","contrast","highlights","shadows","ambience","saturation","vibrance","warmth","tint","structure","sharpen","fade","vignette"];
-  const defaults = {exposure:0,brightness:100,contrast:100,highlights:0,shadows:0,ambience:0,saturation:100,vibrance:0,warmth:0,tint:0,structure:0,sharpen:0,fade:0,vignette:0};
+  const sliderIds = ["exposure","brightness","contrast","highlights","shadows","ambience","saturation","vibrance","warmth","tint","hue","colorLuminance","structure","sharpen","fade","vignette"];
+  const defaults = {exposure:0,brightness:100,contrast:100,highlights:0,shadows:0,ambience:0,saturation:100,vibrance:0,warmth:0,tint:0,hue:0,colorLuminance:0,structure:0,sharpen:0,fade:0,vignette:0};
   const presets = {
     original: {...defaults},
     portrait: {...defaults,exposure:4,brightness:103,contrast:96,highlights:-22,shadows:22,ambience:18,saturation:96,vibrance:12,warmth:5,tint:2,structure:5,sharpen:12,fade:5,vignette:8},
     warm: {...defaults,exposure:3,contrast:106,highlights:-15,shadows:12,ambience:8,saturation:108,vibrance:8,warmth:25,tint:3,structure:10,sharpen:12,fade:13,vignette:18},
     cool: {...defaults,exposure:3,brightness:102,contrast:103,highlights:-8,shadows:12,saturation:95,vibrance:10,warmth:-19,tint:-3,structure:8,sharpen:18,vignette:5},
     noir: {...defaults,exposure:2,contrast:125,highlights:-18,shadows:10,ambience:5,saturation:0,structure:20,sharpen:18,vignette:24},
+    blackwhite: {...defaults,contrast:112,highlights:-12,shadows:12,saturation:0,structure:8,sharpen:12,vignette:12},
     dramatic: {...defaults,exposure:-5,contrast:123,highlights:-28,shadows:17,ambience:12,saturation:109,vibrance:12,warmth:-3,structure:27,sharpen:23,vignette:23}
   };
   const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,cropRect:null,settings:{...defaults},layers:[],activeLayerId:null,selectionMask:null,selectionTool:"rectangle",selectionStart:null,selectionCurrent:null,selectionDrawing:false,brushSize:32,baseVisible:true,layerCounter:0};
@@ -444,13 +445,19 @@
     image.src = state.sourceUrl;
   }
 
+  function sliderValueLabel(id,value) {
+    if(["brightness","contrast","saturation"].includes(id))return value+"%";
+    if(id==="hue")return (value>0?"+":"")+value+"°";
+    return value>0?"+"+value:String(value);
+  }
+
   function syncControls() {
     const currentSettings=editingSettings();
     sliderIds.forEach((id) => {
       $(id).value = currentSettings[id];
       const output = $(id + "Value");
       const value = currentSettings[id];
-      output.value = ["brightness","contrast","saturation"].includes(id) ? value + "%" : (value > 0 ? "+" + value : String(value));
+      output.value = sliderValueLabel(id,value);
     });
     $("exportQualityValue").value = $("exportQuality").value + "%";
     document.querySelectorAll("[data-preset]").forEach((button) => button.classList.toggle("active", button.dataset.preset === activePreset));
@@ -490,6 +497,35 @@
     return canvas;
   }
 
+  function rgbToHsl(r,g,b) {
+    r=clamp(r,0,255)/255;g=clamp(g,0,255)/255;b=clamp(b,0,255)/255;
+    const max=Math.max(r,g,b),min=Math.min(r,g,b),delta=max-min;
+    const lightness=(max+min)/2;
+    let hue=0,saturation=0;
+    if(delta!==0){
+      saturation=lightness>0.5?delta/(2-max-min):delta/(max+min);
+      if(max===r)hue=(g-b)/delta+(g<b?6:0);
+      else if(max===g)hue=(b-r)/delta+2;
+      else hue=(r-g)/delta+4;
+      hue/=6;
+    }
+    return [hue,saturation,lightness];
+  }
+
+  function hslToRgb(h,s,l) {
+    if(s===0){const value=l*255;return [value,value,value];}
+    const q=l<0.5?l*(1+s):l+s-l*s;
+    const p=2*l-q;
+    const hueToRgb=(t)=>{
+      if(t<0)t+=1;if(t>1)t-=1;
+      if(t<1/6)return p+(q-p)*6*t;
+      if(t<1/2)return q;
+      if(t<2/3)return p+(q-p)*(2/3-t)*6;
+      return p;
+    };
+    return [hueToRgb(h+1/3)*255,hueToRgb(h)*255,hueToRgb(h-1/3)*255];
+  }
+
   function processCanvas(sourceCanvas, settings) {
     const context = sourceCanvas.getContext("2d",{willReadFrequently:true});
     if (!context) return null;
@@ -525,6 +561,12 @@
         r=gray+(r-gray)*saturation*satBoost;
         g=gray+(g-gray)*saturation*satBoost;
         b=gray+(b-gray)*saturation*satBoost;
+        if(settings.hue!==0||settings.colorLuminance!==0){
+          let [h,sat,light]=rgbToHsl(r,g,b);
+          h=((h+settings.hue/360)%1+1)%1;
+          light=clamp(light+settings.colorLuminance/200,0,1);
+          [r,g,b]=hslToRgb(h,sat,light);
+        }
         if (fade>0) {
           const flatten=fade*0.24;
           r=r*(1-flatten)+128*flatten;
@@ -763,7 +805,7 @@
       if(!gestureActive){beginGesture();endGesture();}
       editingSettings()[id]=Number(input.value);
       const output=$(id+"Value");
-      output.value=["brightness","contrast","saturation"].includes(id)?input.value+"%":(Number(input.value)>0?"+"+input.value:input.value);
+      output.value=sliderValueLabel(id,Number(input.value));
       activePreset="";
       document.querySelectorAll("[data-preset]").forEach((button)=>button.classList.remove("active"));
       schedulePreview();
