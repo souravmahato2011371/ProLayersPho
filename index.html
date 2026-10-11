@@ -122,6 +122,7 @@
         <div class="panel-note"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sparkles"/></svg> Your original file is never overwritten. Use Undo and Redo to move through edits, then export a new image.</div>
         <section class="export-settings">
           <div class="section-label"><svg><use href="#i-download"/></svg> Export options</div>
+          <div><label class="panel-mini-label" for="exportFilename">Export filename</label><input id="exportFilename" type="text" inputmode="text" maxlength="120" placeholder="Photo-edited" autocomplete="off" spellcheck="false"></div>
           <div><label class="panel-mini-label" for="exportFormat">File format</label><select id="exportFormat"><option value="image/png">PNG · best for transparency</option><option value="image/jpeg">JPEG · smaller file</option><option value="image/webp">WebP · compact file</option></select></div>
           <div class="range-control"><div class="range-label"><label for="exportQuality">Quality (JPEG / WebP)</label><output id="exportQualityValue" for="exportQuality">92%</output></div><input id="exportQuality" type="range" min="40" max="100" value="92"></div>
         </section>
