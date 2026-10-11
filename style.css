@@ -971,3 +971,139 @@ button:disabled{filter:saturate(.55)}
   .canvas-actions .small-button { padding-inline: 8px; }
   .properties-panel .panel-content { padding: 17px 13px; }
 }
+
+
+/* Dedicated portrait-phone layout: keep the photo central and controls compact */
+@media (max-width: 760px) and (orientation: portrait) {
+  body { overflow: hidden; }
+  .topbar {
+    height: calc(54px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .app-shell {
+    height: calc(100dvh - 54px - env(safe-area-inset-top));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .workspace { min-height: 0; }
+  .workspace-toolbar {
+    min-height: 49px;
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .workspace-heading { gap: 2px; }
+  .eyebrow { font-size: 7px; letter-spacing: 1px; }
+  #canvasStatus { max-width: 34vw; font-size: 10px; }
+  .canvas-actions { gap: 3px; }
+  .canvas-actions .small-button {
+    width: 31px;
+    min-width: 31px;
+    height: 33px;
+    min-height: 33px;
+    padding: 0;
+  }
+  .canvas-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 8px 10px;
+    min-height: 0;
+    overflow: auto;
+  }
+  .canvas-toolbox {
+    left: 7px;
+    top: 7px;
+    max-width: calc(100% - 14px);
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+  }
+  .canvas-tool {
+    min-height: 31px;
+    gap: 4px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+  .canvas-tool svg { width: 14px; height: 14px; }
+  .image-viewport {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+  .canvas-stack {
+    max-width: 100%;
+    max-height: 100%;
+  }
+  .canvas-stack #previewCanvas {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100dvh - 255px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  .canvas-stack #selectionOverlay {
+    max-width: 100%;
+    max-height: calc(100dvh - 255px);
+  }
+  .canvas-footer {
+    height: 27px;
+    padding-inline: 8px;
+    font-size: 8px;
+  }
+  .tool-rail {
+    min-height: calc(60px + env(safe-area-inset-bottom));
+    padding: 4px 8px max(4px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+  .rail-tool, .tool-rail .rail-tool.active {
+    min-height: 48px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 3px;
+    font-size: 10px;
+    line-height: 1.1;
+    white-space: normal;
+  }
+  .rail-tool svg { width: 19px; height: 19px; }
+  .properties-panel {
+    left: 6px;
+    right: 6px;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    max-height: min(72dvh, 600px);
+    border-radius: 16px;
+  }
+  .panel-heading {
+    flex-basis: 54px;
+    height: 54px;
+    min-height: 54px;
+    padding-inline: 13px;
+  }
+  .properties-panel .panel-content {
+    padding: 14px 13px max(18px, env(safe-area-inset-bottom));
+  }
+  .settings-section { margin-bottom: 21px; }
+  .range-control { margin-bottom: 19px; }
+  .range-label { gap: 8px; }
+  .range-label label, .range-label output { font-size: 11px; }
+  .preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .preset-button { min-height: 56px; padding: 9px; }
+  .area-editor { padding: 11px; }
+  .selection-actions { gap: 8px; }
+  .selection-actions button { min-height: 40px; }
+}
+@media (max-width: 380px) and (orientation: portrait) {
+  .brand-name { font-size: 12px; }
+  #exportButton { min-height: 35px; padding: 7px 8px; font-size: 11px; gap: 5px; }
+  #exportButton svg { width: 15px; height: 15px; }
+  .workspace-toolbar { padding-inline: 6px; }
+  #canvasStatus { max-width: 29vw; }
+  .canvas-actions .small-button { width: 29px; min-width: 29px; }
+  .canvas-stage { padding-top: 44px; }
+  .canvas-tool { padding-inline: 5px; font-size: 9px; }
+}
