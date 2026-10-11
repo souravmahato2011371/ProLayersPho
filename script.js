@@ -18,7 +18,7 @@
     noir: {...defaults,exposure:2,contrast:125,highlights:-18,shadows:10,ambience:5,saturation:0,structure:20,sharpen:18,vignette:24},
     dramatic: {...defaults,exposure:-5,contrast:123,highlights:-28,shadows:17,ambience:12,saturation:109,vibrance:12,warmth:-3,structure:27,sharpen:23,vignette:23}
   };
-  const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,settings:{...defaults},layers:[],activeLayerId:null,selectionMask:null,selectionTool:"rectangle",selectionStart:null,selectionCurrent:null,selectionDrawing:false,brushSize:32,baseVisible:true,layerCounter:0};
+  const state = {fileName:"",sourceUrl:"",objectUrl:"",imageElement:null,rotation:0,flipped:false,cropRect:null,settings:{...defaults},layers:[],activeLayerId:null,selectionMask:null,selectionTool:"rectangle",selectionStart:null,selectionCurrent:null,selectionDrawing:false,brushSize:32,baseVisible:true,layerCounter:0};
   let canvasTool = "select";
   let canvasZoom = 1;
   let canvasPan = {x:0,y:0};
@@ -50,7 +50,7 @@
     return layer && layer.settings ? layer.settings : state.settings;
   }
   function snapshot() {
-    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
+    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,cropRect:state.cropRect?{...state.cropRect}:null,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
   }
 
   function recordHistory() {
@@ -85,6 +85,7 @@
     $("clearSelectionButton").disabled=!state.selectionMask;
     $("addAreaLayerButton").disabled=!state.selectionMask || !state.imageElement;
     $("createPixelLayerButton").disabled=!state.selectionMask || !state.imageElement;
+    $("cropSelectionButton").disabled=!state.selectionMask || state.selectionTool!=="rectangle" || !state.imageElement;
     $("selectionStatus").textContent=state.selectionMask ? "Area selected. Add an area layer, then use Edit to tune only this region." : (state.activeLayerId ? "Drag the selected area on the canvas to reposition it. Select the base photo below to draw a new area." : "Draw a shape or brush over the photo, then add an area layer.");
     document.querySelectorAll("[data-selection-tool]").forEach((button)=>{const active=button.dataset.selectionTool===state.selectionTool;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
   }
@@ -95,7 +96,9 @@
     state.layers.slice().reverse().forEach((layer)=>{
       const active=layer.id===state.activeLayerId;
       const index=state.layers.findIndex((item)=>item.id===layer.id);
-      markup+='<div class="layer-row'+(active?' is-active':'')+'" data-layer-row="'+layer.id+'"><button class="layer-drag-handle" type="button" data-layer-drag-handle="'+layer.id+'" aria-label="Drag '+escapeHtml(layer.name)+' to reorder" title="Drag to reorder">⠿</button><div class="layer-thumb layer-adjustment-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'" aria-pressed="'+active+'">'+escapeHtml(layer.name)+'<small>'+(layer.type==="pixel"?"Pixel layer · ":"Area adjustment · ")+Math.round(layer.opacity*100)+'%</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><details class="layer-options"><summary class="icon-button layer-menu" aria-label="Manage '+escapeHtml(layer.name)+'" title="Layer options">•••</summary><div class="layer-options-menu"><div class="layer-menu-title">'+escapeHtml(layer.name)+'</div><div class="layer-order-actions"><button type="button" data-layer-action="up" data-layer-id="'+layer.id+'" '+(index===state.layers.length-1?'disabled':'')+'>↑ Move up</button><button type="button" data-layer-action="down" data-layer-id="'+layer.id+'" '+(index===0?'disabled':'')+'>↓ Move down</button></div><label class="layer-opacity-control" for="opacity-'+layer.id+'"><span>Opacity <output data-opacity-value="'+layer.id+'">'+Math.round(layer.opacity*100)+'%</output></span><input id="opacity-'+layer.id+'" type="range" min="0" max="100" value="'+Math.round(layer.opacity*100)+'" data-layer-opacity="'+layer.id+'"></label><button type="button" data-layer-action="duplicate" data-layer-id="'+layer.id+'">Duplicate layer</button><button type="button" data-layer-action="rename" data-layer-id="'+layer.id+'">Rename layer</button><button class="layer-danger" type="button" data-layer-action="delete" data-layer-id="'+layer.id+'">Delete layer</button></div></details></div>';
+      const blendModes=[["source-over","Normal"],["multiply","Multiply"],["screen","Screen"],["overlay","Overlay"],["darken","Darken"],["lighten","Lighten"],["color-dodge","Color dodge"],["color-burn","Color burn"],["hard-light","Hard light"],["soft-light","Soft light"],["difference","Difference"],["exclusion","Exclusion"]];
+      const blendOptions=blendModes.map(([value,label])=>'<option value="'+value+'"'+((layer.blendMode||"source-over")===value?' selected':'')+'>'+label+'</option>').join("");
+      markup+='<div class="layer-row'+(active?' is-active':'')+'" data-layer-row="'+layer.id+'"><button class="layer-drag-handle" type="button" data-layer-drag-handle="'+layer.id+'" aria-label="Drag '+escapeHtml(layer.name)+' to reorder" title="Drag to reorder">⠿</button><div class="layer-thumb layer-adjustment-thumb">◉</div><button class="layer-select-button" type="button" data-select-layer="'+layer.id+'" aria-pressed="'+active+'">'+escapeHtml(layer.name)+'<small>'+(layer.type==="pixel"?"Pixel layer · ":"Area adjustment · ")+Math.round(layer.opacity*100)+'%</small></button><button class="icon-button layer-eye'+(layer.visible?"":" is-hidden")+'" type="button" data-toggle-layer="'+layer.id+'" aria-label="Toggle '+escapeHtml(layer.name)+' visibility" title="Toggle visibility"><svg><use href="#i-eye"/></svg></button><details class="layer-options"><summary class="icon-button layer-menu" aria-label="Manage '+escapeHtml(layer.name)+'" title="Layer options">•••</summary><div class="layer-options-menu"><div class="layer-menu-title">'+escapeHtml(layer.name)+'</div><div class="layer-order-actions"><button type="button" data-layer-action="up" data-layer-id="'+layer.id+'" '+(index===state.layers.length-1?'disabled':'')+'>↑ Move up</button><button type="button" data-layer-action="down" data-layer-id="'+layer.id+'" '+(index===0?'disabled':'')+'>↓ Move down</button></div><label class="layer-blend-control" for="blend-'+layer.id+'"><span>Blend mode</span><select id="blend-'+layer.id+'" data-layer-blend="'+layer.id+'">'+blendOptions+'</select></label><label class="layer-opacity-control" for="opacity-'+layer.id+'"><span>Opacity <output data-opacity-value="'+layer.id+'">'+Math.round(layer.opacity*100)+'%</output></span><input id="opacity-'+layer.id+'" type="range" min="0" max="100" value="'+Math.round(layer.opacity*100)+'" data-layer-opacity="'+layer.id+'"></label><button type="button" data-layer-action="duplicate" data-layer-id="'+layer.id+'">Duplicate layer</button><button type="button" data-layer-action="rename" data-layer-id="'+layer.id+'">Rename layer</button><button class="layer-danger" type="button" data-layer-action="delete" data-layer-id="'+layer.id+'">Delete layer</button></div></details></div>';
     });
     const baseActive=!state.activeLayerId;
     markup+='<div class="layer-row layer-background'+(baseActive?' is-active':'')+'"><div class="layer-thumb"><img src="'+state.sourceUrl+'" alt=""></div><button class="layer-select-button" type="button" data-select-base aria-pressed="'+baseActive+'">'+escapeHtml(state.fileName)+'<small>Background photo · base</small></button><button class="icon-button layer-eye'+(state.baseVisible?"":" is-hidden")+'" type="button" data-toggle-base aria-label="Toggle photo visibility" title="Toggle photo visibility"><svg><use href="#i-eye"/></svg></button><span class="layer-lock" aria-label="Base layer stays at the bottom" title="Base photo">BASE</span></div>';
@@ -136,7 +139,7 @@
   function addAreaLayer() {
     if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
     recordHistory();state.layerCounter+=1;const id="area-"+state.layerCounter;
-    state.layers.push({id,type:"adjustment",name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),offsetX:0,offsetY:0,visible:true,opacity:1});
+    state.layers.push({id,type:"adjustment",name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),offsetX:0,offsetY:0,referenceWidth:previewCanvas.width,referenceHeight:previewCanvas.height,blendMode:"source-over",visible:true,opacity:1});
     state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();notify("Area adjustment layer added");
   }
   function createPixelLayerFromSelection() {
@@ -162,7 +165,7 @@
     // Start the cropped layer in the centre of the canvas.
     const offsetX=Math.round((source.width-pixels.width)/2);
     const offsetY=Math.round((source.height-pixels.height)/2);
-    state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,settings:{...defaults},offsetX,offsetY,visible:true,opacity:1});
+    state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,settings:{...defaults},offsetX,offsetY,referenceWidth:source.width,referenceHeight:source.height,blendMode:"source-over",visible:true,opacity:1});
     state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();
     notify("Pixel layer created in the centre · original photo stays underneath");
   }
@@ -320,26 +323,53 @@
     const layerSource=cloneCanvas(base);
     state.layers.forEach((layer)=>{
       if(!layer.visible||layer.opacity<=0)return;
+      const refWidth=Math.max(1,layer.referenceWidth||base.width);
+      const refHeight=Math.max(1,layer.referenceHeight||base.height);
+      const scaleX=base.width/refWidth;
+      const scaleY=base.height/refHeight;
+      const blendMode=layer.blendMode||"source-over";
       if(layer.type==="pixel"&&layer.pixelCanvas){
-        const tuned=cloneCanvas(layer.pixelCanvas);
+        const source=layer.pixelCanvas;
+        const tuned=document.createElement("canvas");
+        tuned.width=Math.max(1,Math.round(source.width*scaleX));
+        tuned.height=Math.max(1,Math.round(source.height*scaleY));
+        const tunedContext=tuned.getContext("2d");
+        if(!tunedContext)return;
+        tunedContext.imageSmoothingEnabled=true;
+        tunedContext.drawImage(source,0,0,tuned.width,tuned.height);
         if(layer.settings)processCanvas(tuned,layer.settings);
-        baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(tuned,layer.offsetX||0,layer.offsetY||0);baseContext.restore();return;
+        baseContext.save();
+        baseContext.globalAlpha=layer.opacity;
+        baseContext.globalCompositeOperation=blendMode;
+        baseContext.drawImage(tuned,(layer.offsetX||0)*scaleX,(layer.offsetY||0)*scaleY);
+        baseContext.restore();
+        return;
       }
       if(!layer.maskCanvas||!layer.settings)return;
-      const adjusted=cloneCanvas(layerSource);if(!processCanvas(adjusted,layer.settings))return;
-      const shiftedMask=document.createElement("canvas");shiftedMask.width=adjusted.width;shiftedMask.height=adjusted.height;
-      const maskContext=shiftedMask.getContext("2d");maskContext.imageSmoothingEnabled=false;
-      maskContext.drawImage(layer.maskCanvas,layer.offsetX||0,layer.offsetY||0);
-      const adjustedContext=adjusted.getContext("2d");adjustedContext.globalCompositeOperation="destination-in";
-      adjustedContext.drawImage(shiftedMask,0,0);adjustedContext.globalCompositeOperation="source-over";
-      baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(adjusted,0,0);baseContext.restore();
-    });return base;
+      const adjusted=cloneCanvas(layerSource);
+      if(!processCanvas(adjusted,layer.settings))return;
+      const shiftedMask=document.createElement("canvas");
+      shiftedMask.width=adjusted.width;shiftedMask.height=adjusted.height;
+      const maskContext=shiftedMask.getContext("2d");
+      maskContext.imageSmoothingEnabled=false;
+      maskContext.drawImage(layer.maskCanvas,(layer.offsetX||0)*scaleX,(layer.offsetY||0)*scaleY,layer.maskCanvas.width*scaleX,layer.maskCanvas.height*scaleY);
+      const adjustedContext=adjusted.getContext("2d");
+      adjustedContext.globalCompositeOperation="destination-in";
+      adjustedContext.drawImage(shiftedMask,0,0);
+      adjustedContext.globalCompositeOperation="source-over";
+      baseContext.save();
+      baseContext.globalAlpha=layer.opacity;
+      baseContext.globalCompositeOperation=blendMode;
+      baseContext.drawImage(adjusted,0,0);
+      baseContext.restore();
+    });
+    return base;
   }
-
   function restoreSnapshot(saved) {
     state.settings = {...saved.settings};
     state.rotation = saved.rotation;
     state.flipped = saved.flipped;
+    state.cropRect = saved.cropRect ? {...saved.cropRect} : null;
     state.layers = (saved.layers || []).map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)}));
     state.activeLayerId = saved.activeLayerId || null;
     state.baseVisible = saved.baseVisible !== false;
@@ -393,6 +423,7 @@
       state.imageElement = image;
       state.rotation = 0;
       state.flipped = false;
+      state.cropRect = null;
       state.settings = {...defaults};
       state.layers=[];state.activeLayerId=null;state.baseVisible=true;state.layerCounter=0;clearSelection();
       compareMode = false;
@@ -443,6 +474,19 @@
     context.rotate(state.rotation*Math.PI/180);
     context.scale(state.flipped ? -1 : 1,1);
     context.drawImage(image,-w/2,-h/2,w,h);
+    if(state.cropRect){
+      const crop=state.cropRect;
+      const left=clamp(Math.floor(crop.x*canvas.width),0,canvas.width-1);
+      const top=clamp(Math.floor(crop.y*canvas.height),0,canvas.height-1);
+      const cropWidth=clamp(Math.round(crop.width*canvas.width),1,canvas.width-left);
+      const cropHeight=clamp(Math.round(crop.height*canvas.height),1,canvas.height-top);
+      const cropped=document.createElement("canvas");
+      cropped.width=cropWidth;cropped.height=cropHeight;
+      const croppedContext=cropped.getContext("2d");
+      if(!croppedContext)return null;
+      croppedContext.drawImage(canvas,left,top,cropWidth,cropHeight,0,0,cropWidth,cropHeight);
+      return cropped;
+    }
     return canvas;
   }
 
@@ -537,7 +581,10 @@
       if(selectionOverlay.height!==previewCanvas.height)selectionOverlay.height=previewCanvas.height;
       drawSelectionOverlay();
       const sideways=Math.abs(state.rotation%180)===90;
-      $("imageDimensions").textContent="Canvas · "+(sideways?state.imageElement.naturalHeight+" × "+state.imageElement.naturalWidth:state.imageElement.naturalWidth+" × "+state.imageElement.naturalHeight);
+      const fullWidth=sideways?state.imageElement.naturalHeight:state.imageElement.naturalWidth;
+      const fullHeight=sideways?state.imageElement.naturalWidth:state.imageElement.naturalHeight;
+      const crop=state.cropRect||{x:0,y:0,width:1,height:1};
+      $("imageDimensions").textContent="Canvas · "+Math.max(1,Math.round(fullWidth*crop.width))+" × "+Math.max(1,Math.round(fullHeight*crop.height));
       $("renderStatus").textContent=compareMode?"Original adjustments · hold to compare":"Edits are previewed locally";
     });
   }
@@ -573,6 +620,62 @@
     state.flipped=false;
     schedulePreview();
     notify("Transform reset");
+  }
+
+  function cropLayersToSelection(bounds, frameWidth, frameHeight) {
+    state.layers.forEach((layer)=>{
+      const source=layer.type==="pixel"?layer.pixelCanvas:layer.maskCanvas;
+      if(!source)return;
+      const refWidth=Math.max(1,layer.referenceWidth||frameWidth);
+      const refHeight=Math.max(1,layer.referenceHeight||frameHeight);
+      const scaleX=frameWidth/refWidth;
+      const scaleY=frameHeight/refHeight;
+      const full=document.createElement("canvas");
+      full.width=frameWidth;full.height=frameHeight;
+      const fullContext=full.getContext("2d");
+      fullContext.drawImage(source,(layer.offsetX||0)*scaleX,(layer.offsetY||0)*scaleY,source.width*scaleX,source.height*scaleY);
+      const cropped=document.createElement("canvas");
+      cropped.width=bounds.width;cropped.height=bounds.height;
+      cropped.getContext("2d").drawImage(full,bounds.left,bounds.top,bounds.width,bounds.height,0,0,bounds.width,bounds.height);
+      layer.referenceWidth=bounds.width;
+      layer.referenceHeight=bounds.height;
+      if(layer.type==="pixel"){
+        const data=cropped.getContext("2d",{willReadFrequently:true}).getImageData(0,0,cropped.width,cropped.height).data;
+        let left=cropped.width,top=cropped.height,right=-1,bottom=-1;
+        for(let y=0;y<cropped.height;y++)for(let x=0;x<cropped.width;x++)if(data[(y*cropped.width+x)*4+3]>0){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}
+        if(right>=left&&bottom>=top){
+          const trimmed=document.createElement("canvas");
+          trimmed.width=right-left+1;trimmed.height=bottom-top+1;
+          trimmed.getContext("2d").drawImage(cropped,left,top,trimmed.width,trimmed.height,0,0,trimmed.width,trimmed.height);
+          layer.pixelCanvas=trimmed;layer.offsetX=left;layer.offsetY=top;
+        }else{layer.pixelCanvas=cropped;layer.offsetX=0;layer.offsetY=0;}
+      }else{
+        layer.maskCanvas=cropped;layer.offsetX=0;layer.offsetY=0;
+      }
+    });
+  }
+
+  function cropToSelection() {
+    if(!state.imageElement||!state.selectionMask){notify("Draw a rectangle selection first.");return;}
+    if(state.selectionTool!=="rectangle"){notify("Choose Rectangle to crop the image.");return;}
+    const width=state.selectionMask.width,height=state.selectionMask.height;
+    const data=state.selectionMask.getContext("2d",{willReadFrequently:true}).getImageData(0,0,width,height).data;
+    let left=width,top=height,right=-1,bottom=-1;
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]>0){left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x);bottom=Math.max(bottom,y);}
+    if(right-left<2||bottom-top<2){notify("Draw a larger rectangle to crop.");return;}
+    const bounds={left,top,width:right-left+1,height:bottom-top+1};
+    const previous=state.cropRect||{x:0,y:0,width:1,height:1};
+    recordHistory();
+    cropLayersToSelection(bounds,width,height);
+    state.cropRect={
+      x:previous.x+(left/width)*previous.width,
+      y:previous.y+(top/height)*previous.height,
+      width:(bounds.width/width)*previous.width,
+      height:(bounds.height/height)*previous.height
+    };
+    clearSelection();
+    renderLayerList();syncControls();schedulePreview();
+    notify("Crop applied · use Undo to restore the previous frame");
   }
 
   function setActivePanel(panelName) {
@@ -637,6 +740,15 @@
   document.addEventListener("selectstart", (event) => {
     if (!event.target.closest('input, textarea, [contenteditable="true"]')) event.preventDefault();
   });
+  document.addEventListener("keydown",(event)=>{
+    const target=event.target;
+    if(target&&target.closest&&target.closest('input,textarea,select,[contenteditable="true"]'))return;
+    const modifier=event.ctrlKey||event.metaKey;
+    if(!modifier)return;
+    const key=event.key.toLowerCase();
+    if(key==="z"){event.preventDefault();if(event.shiftKey)redo();else undo();}
+    else if(key==="y"){event.preventDefault();redo();}
+  });
   $("openImageButton").addEventListener("click",openPicker);
   fileInput.addEventListener("change",(event)=>{readFile(event.target.files&&event.target.files[0]);fileInput.value="";});
   sliderIds.forEach((id)=>{
@@ -673,6 +785,7 @@
   $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
   $("addAreaLayerButton").addEventListener("click",addAreaLayer);
   $("createPixelLayerButton").addEventListener("click",createPixelLayerFromSelection);
+  $("cropSelectionButton").addEventListener("click",cropToSelection);
   selectionOverlay.addEventListener("pointerdown",beginCanvasGesture);selectionOverlay.addEventListener("pointermove",(event)=>{if(canvasMoveGesture||panGesture)moveCanvasGesture(event);else if(canvasTool==="select")moveSelection(event);});selectionOverlay.addEventListener("pointerup",finishCanvasGesture);selectionOverlay.addEventListener("pointercancel",finishCanvasGesture);
   document.querySelectorAll("[data-canvas-tool]").forEach((button)=>button.addEventListener("click",()=>setCanvasTool(button.dataset.canvasTool)));
   $("zoomCanvasButton").addEventListener("click",cycleCanvasZoom);
@@ -683,6 +796,14 @@
   $("layerList").addEventListener("pointerup",()=>{opacityGestureActive=false;});
   $("layerList").addEventListener("pointercancel",()=>{opacityGestureActive=false;});
   $("layerList").addEventListener("focusout",(event)=>{if(event.target.matches("[data-layer-opacity]"))opacityGestureActive=false;});
+  $("layerList").addEventListener("change",(event)=>{
+    const select=event.target.closest("[data-layer-blend]");
+    if(!select)return;
+    const layer=state.layers.find((item)=>item.id===select.dataset.layerBlend);
+    if(!layer||layer.blendMode===select.value)return;
+    recordHistory();layer.blendMode=select.value;schedulePreview();
+    notify("Blend mode · "+select.options[select.selectedIndex].text);
+  });
   $("layerList").addEventListener("input",(event)=>{
     const input=event.target.closest("[data-layer-opacity]");if(!input)return;
     if(!opacityGestureActive){recordHistory();opacityGestureActive=true;}
