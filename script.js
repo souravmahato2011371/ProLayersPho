@@ -47,10 +47,10 @@
 
   function editingSettings() {
     const layer=state.layers.find((item)=>item.id===state.activeLayerId);
-    return layer ? layer.settings : state.settings;
+    return layer && layer.type!=="pixel" ? layer.settings : state.settings;
   }
   function snapshot() {
-    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:{...layer.settings},maskCanvas:cloneCanvas(layer.maskCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
+    return {settings:{...state.settings},rotation:state.rotation,flipped:state.flipped,activePreset:activePreset,layers:state.layers.map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)})),activeLayerId:state.activeLayerId,baseVisible:state.baseVisible,layerCounter:state.layerCounter};
   }
 
   function recordHistory() {
@@ -111,7 +111,7 @@
   function duplicateLayer(id) {
     const index=state.layers.findIndex((layer)=>layer.id===id);if(index<0)return;
     recordHistory();const source=state.layers[index];state.layerCounter+=1;
-    const copy={...source,id:"area-"+state.layerCounter,name:source.name+" copy",settings:{...source.settings},maskCanvas:cloneCanvas(source.maskCanvas),visible:source.visible,opacity:source.opacity};
+    const copy={...source,id:"area-"+state.layerCounter,name:source.name+" copy",settings:source.settings?{...source.settings}:undefined,maskCanvas:cloneCanvas(source.maskCanvas),pixelCanvas:cloneCanvas(source.pixelCanvas),offsetX:source.offsetX||0,offsetY:source.offsetY||0,visible:source.visible,opacity:source.opacity};
     state.layers.splice(index+1,0,copy);state.activeLayerId=copy.id;syncControls();renderLayerList();schedulePreview();notify("Layer duplicated");
   }
   function renameLayer(id) {
@@ -134,12 +134,22 @@
   }
   function addAreaLayer() {
     if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
-    recordHistory();state.layerCounter+=1;
-    const id="area-"+state.layerCounter;
-    state.layers.push({id,name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
-    state.activeLayerId=id;
-    clearSelection();
-    renderLayerList();syncControls();schedulePreview();notify("Area layer added · drag it on the canvas to reposition");
+    recordHistory();state.layerCounter+=1;const id="area-"+state.layerCounter;
+    state.layers.push({id,type:"adjustment",name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),visible:true,opacity:1});
+    state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();notify("Area adjustment layer added");
+  }
+  function createPixelLayerFromSelection() {
+    if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
+    const source=renderImage(1100,false);if(!source){notify("Could not create pixel layer.");return;}
+    const pixels=document.createElement("canvas");pixels.width=source.width;pixels.height=source.height;
+    const context=pixels.getContext("2d");context.drawImage(source,0,0);
+    context.globalCompositeOperation="destination-in";
+    context.drawImage(normalizeLayerMask(state.selectionMask,source.width,source.height),0,0);
+    context.globalCompositeOperation="source-over";
+    recordHistory();state.layerCounter+=1;const id="pixel-"+state.layerCounter;
+    state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,offsetX:0,offsetY:0,visible:true,opacity:1});
+    state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();
+    notify("Pixel layer created · original photo stays underneath");
   }
 
     function clearSelection() {
@@ -152,8 +162,8 @@
     if(selectionOverlay.height!==previewCanvas.height)selectionOverlay.height=previewCanvas.height;
     const ctx=selectionOverlay.getContext("2d");ctx.clearRect(0,0,selectionOverlay.width,selectionOverlay.height);
     const activeLayer=state.layers.find((layer)=>layer.id===state.activeLayerId);
-    const visibleMask=state.selectionMask || (activeLayer && activeLayer.visible ? activeLayer.maskCanvas : null);
-    if(visibleMask){ctx.save();ctx.globalAlpha=.25;ctx.drawImage(visibleMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
+    const visibleMask=state.selectionMask || (activeLayer && activeLayer.visible ? (activeLayer.type==="pixel" ? activeLayer.pixelCanvas : activeLayer.maskCanvas) : null);
+    if(visibleMask){ctx.save();ctx.globalAlpha=.25;if(activeLayer&&activeLayer.type==="pixel"&&!state.selectionMask)ctx.drawImage(visibleMask,activeLayer.offsetX||0,activeLayer.offsetY||0,selectionOverlay.width,selectionOverlay.height);else ctx.drawImage(visibleMask,0,0,selectionOverlay.width,selectionOverlay.height);ctx.restore();}
     if(state.selectionDrawing&&state.selectionStart&&state.selectionCurrent&&state.selectionTool!=="brush"){
       const a=state.selectionStart,b=state.selectionCurrent;ctx.save();ctx.strokeStyle="#d8ef9b";ctx.lineWidth=Math.max(1,selectionOverlay.width/800*1.5);ctx.setLineDash([7,4]);
       if(state.selectionTool==="rectangle")ctx.strokeRect(a.x,a.y,b.x-a.x,b.y-a.y);
@@ -217,11 +227,15 @@
     event.preventDefault();
     selectionOverlay.setPointerCapture(event.pointerId);
     const rect=selectionOverlay.getBoundingClientRect();
-    const original=normalizeLayerMask(layer.maskCanvas,previewCanvas.width,previewCanvas.height);
+    const isPixel=layer.type==="pixel";
+    const original=normalizeLayerMask(isPixel?layer.pixelCanvas:layer.maskCanvas,previewCanvas.width,previewCanvas.height);
     recordHistory();
     canvasMoveGesture = {
       pointerId:event.pointerId,
       layerId:layer.id,
+      isPixel,
+      originX:layer.offsetX||0,
+      originY:layer.offsetY||0,
       startClientX:event.clientX,
       startClientY:event.clientY,
       scaleX:previewCanvas.width/Math.max(1,rect.width),
@@ -248,11 +262,7 @@
     if (!dx && !dy) return;
     const layer = state.layers.find((item) => item.id === canvasMoveGesture.layerId);
     if (!layer) return;
-    const moved = document.createElement("canvas");
-    moved.width = canvasMoveGesture.original.width;
-    moved.height = canvasMoveGesture.original.height;
-    moved.getContext("2d").drawImage(canvasMoveGesture.original, dx, dy);
-    layer.maskCanvas = moved;
+    if(canvasMoveGesture.isPixel){layer.offsetX=canvasMoveGesture.originX+dx;layer.offsetY=canvasMoveGesture.originY+dy;}else{const moved=document.createElement("canvas");moved.width=canvasMoveGesture.original.width;moved.height=canvasMoveGesture.original.height;moved.getContext("2d").drawImage(canvasMoveGesture.original,dx,dy);layer.maskCanvas=moved;}
     canvasMoveGesture.moved = true;
     schedulePreview();
     drawSelectionOverlay();
@@ -291,32 +301,23 @@
   function applyAreaLayers(base) {
     const baseContext=base.getContext("2d");
     if(!state.baseVisible)baseContext.clearRect(0,0,base.width,base.height);
-
-    // Every adjustment layer starts from the same untouched global edit result.
-    // This prevents one area's settings from becoming the input to the next layer,
-    // which made overlapping masks interfere with each other.
     const layerSource=cloneCanvas(base);
     state.layers.forEach((layer)=>{
-      if(!layer.visible||!layer.maskCanvas||layer.opacity<=0)return;
-      const adjusted=cloneCanvas(layerSource);
-      if(!processCanvas(adjusted,layer.settings))return;
-      const adjustedContext=adjusted.getContext("2d");
-      adjustedContext.globalCompositeOperation="destination-in";
-      adjustedContext.drawImage(layer.maskCanvas,0,0,adjusted.width,adjusted.height);
-      adjustedContext.globalCompositeOperation="source-over";
-      baseContext.save();
-      baseContext.globalAlpha=layer.opacity;
-      baseContext.drawImage(adjusted,0,0);
-      baseContext.restore();
-    });
-    return base;
+      if(!layer.visible||layer.opacity<=0)return;
+      if(layer.type==="pixel"&&layer.pixelCanvas){baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(layer.pixelCanvas,layer.offsetX||0,layer.offsetY||0);baseContext.restore();return;}
+      if(!layer.maskCanvas||!layer.settings)return;
+      const adjusted=cloneCanvas(layerSource);if(!processCanvas(adjusted,layer.settings))return;
+      const adjustedContext=adjusted.getContext("2d");adjustedContext.globalCompositeOperation="destination-in";
+      adjustedContext.drawImage(layer.maskCanvas,0,0,adjusted.width,adjusted.height);adjustedContext.globalCompositeOperation="source-over";
+      baseContext.save();baseContext.globalAlpha=layer.opacity;baseContext.drawImage(adjusted,0,0);baseContext.restore();
+    });return base;
   }
 
   function restoreSnapshot(saved) {
     state.settings = {...saved.settings};
     state.rotation = saved.rotation;
     state.flipped = saved.flipped;
-    state.layers = (saved.layers || []).map((layer)=>({...layer,settings:{...layer.settings},maskCanvas:cloneCanvas(layer.maskCanvas)}));
+    state.layers = (saved.layers || []).map((layer)=>({...layer,settings:layer.settings?{...layer.settings}:undefined,maskCanvas:cloneCanvas(layer.maskCanvas),pixelCanvas:cloneCanvas(layer.pixelCanvas)}));
     state.activeLayerId = saved.activeLayerId || null;
     state.baseVisible = saved.baseVisible !== false;
     state.layerCounter = saved.layerCounter || state.layers.length;
@@ -640,6 +641,7 @@
   $("brushSize").addEventListener("input",()=>{state.brushSize=Number($("brushSize").value);});
   $("clearSelectionButton").addEventListener("click",()=>{clearSelection();notify("Area selection cleared");});
   $("addAreaLayerButton").addEventListener("click",addAreaLayer);
+  $("createPixelLayerButton").addEventListener("click",createPixelLayerFromSelection);
   selectionOverlay.addEventListener("pointerdown",beginCanvasGesture);selectionOverlay.addEventListener("pointermove",(event)=>{if(canvasMoveGesture||panGesture)moveCanvasGesture(event);else if(canvasTool==="select")moveSelection(event);});selectionOverlay.addEventListener("pointerup",finishCanvasGesture);selectionOverlay.addEventListener("pointercancel",finishCanvasGesture);
   document.querySelectorAll("[data-canvas-tool]").forEach((button)=>button.addEventListener("click",()=>setCanvasTool(button.dataset.canvasTool)));
   $("zoomCanvasButton").addEventListener("click",cycleCanvasZoom);
