@@ -10,10 +10,10 @@
     exposure:{title:"Tune image",controls:["exposure","brightness","contrast","highlights","shadows","ambience"]},
     structure:{title:"Details",controls:["structure","sharpen"]},
     ambience:{title:"Dehaze",controls:["ambience","contrast","saturation"]},
-    contrast:{title:"Tonal contrast / Curves",controls:["contrast","highlights","shadows","brightness"]},
+    contrast:{title:"Tonal contrast",controls:["contrast","highlights","shadows","brightness"]},
     warmth:{title:"White balance",controls:["warmth","tint"]},
-    saturation:{title:"Colour",controls:["saturation","vibrance","hue","colorLuminance"]},
-    vibrance:{title:"Colour grade",controls:["vibrance","warmth","tint","saturation"]},
+    saturation:{title:"Colour",controls:["hue","saturation","colorLuminance"],note:"These controls currently adjust the whole image. Per-colour channel selection (red, orange, yellow, green, cyan, blue, purple and pink) is not implemented yet."},
+    vibrance:{title:"Colour grade",controls:["warmth","tint","hue","saturation","vibrance"],note:"Global colour grading controls are available. Separate shadows, midtones and highlights colour wheels are not implemented yet."},
     vignette:{title:"Vignette",controls:["vignette","exposure"]},
     grain:{title:"Grainy film",controls:["structure","fade","saturation"]},
     bloom:{title:"Bloom",controls:["highlights","ambience","fade"]},
@@ -85,7 +85,7 @@
       const preset = document.querySelector('[data-preset="' + config.preset + '"]');
       if (preset) preset.click();
     }
-    config.controls.forEach(id => {
+    const activeAdjustments = document.createElement("div"); activeAdjustments.className = "tool-adjustment-list";\n    let selectedAdjustment = null;\n    function selectAdjustment(id, row) {\n      activeAdjustments.querySelectorAll(".tool-adjustment-row").forEach(item => item.classList.toggle("is-selected", item === row));\n      selectedAdjustment = id;\n      const control = workspace.querySelector("#workspace-" + id);\n      if (control) { control.focus({preventScroll:true}); }\n    }\n    config.controls.forEach(id => {
       const original = document.getElementById(id);
       if (!original) return;
       const wrap = document.createElement("div"); wrap.className = "range-control tool-workspace-control";
@@ -98,9 +98,9 @@
         setSlider(id, Number(range.value));
         output.textContent = range.value + (["brightness","contrast","saturation"].includes(id) ? "%" : "");
       });
-      labelRow.append(label, output); wrap.append(labelRow, range); workspace.append(wrap);
+      labelRow.append(label, output); wrap.append(labelRow, range);\n      const row = document.createElement("button"); row.type = "button"; row.className = "tool-adjustment-row"; row.textContent = names[id] || id;\n      const value = document.createElement("span"); value.className = "tool-adjustment-value"; value.textContent = output.textContent; row.append(value);\n      row.addEventListener("click", () => selectAdjustment(id, row));\n      range.addEventListener("input", () => { value.textContent = output.textContent; });\n      activeAdjustments.append(row); workspace.append(wrap);\n      if (!selectedAdjustment) selectAdjustment(id, row);
     });
-    if (config.note) {
+    workspace.append(activeAdjustments);\n    if (config.note) {
       const note = document.createElement("p"); note.className = "panel-note"; note.textContent = config.note; workspace.append(note);
     }
     const reset = document.createElement("button"); reset.type = "button"; reset.className = "wide-action"; reset.textContent = "Reset this tool";
