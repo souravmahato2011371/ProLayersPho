@@ -1168,3 +1168,8 @@ button:disabled{filter:saturate(.55)}
 .tool-adjustment-row.is-selected .tool-adjustment-value{color:#171717}
 .tool-adjustment-row:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tool-workspace-control{border:1px solid var(--border);border-radius:9px;padding:11px;margin:0!important}
+
+
+/* Keep Edit controls and their JavaScript hooks intact, but hide the tool library UI until tools are requested. */
+#propertiesPanel:has(#adjustmentsPanel:not([hidden])) .panel-heading,
+#adjustmentsPanel:not([hidden]) { display: none !important; }
