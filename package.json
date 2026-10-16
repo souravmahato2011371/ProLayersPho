@@ -4,13 +4,16 @@
   "private": true,
   "description": "ProLayers Pho photo editor",
   "scripts": {
-    "build": "mkdir -p www && cp index.html style.css script.js tool-library.js www/"
+    "build": "mkdir -p www && cp index.html style.css script.js tool-library.js www/ && npx esbuild android-entry.js --bundle --platform=browser --format=iife --outfile=www/script.bundle.js && sed -i 's/src=\"script.js\"/src=\"script.bundle.js\"/' www/index.html"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
-    "@capacitor/core": "^8.0.0"
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/share": "^8.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.0.0"
+    "@capacitor/cli": "^8.0.0",
+    "esbuild": "^0.25.0"
   }
 }
