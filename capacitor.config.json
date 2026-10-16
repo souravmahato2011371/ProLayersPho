@@ -1,0 +1,9 @@
+{
+  "appId": "com.souravmahato.prolayerspho",
+  "appName": "ProLayers Pho",
+  "webDir": "www",
+  "backgroundColor": "#111216",
+  "android": {
+    "allowMixedContent": false
+  }
+}
