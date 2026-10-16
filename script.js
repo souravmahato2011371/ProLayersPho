@@ -163,12 +163,14 @@
     const pixels=document.createElement("canvas");pixels.width=right-left+1;pixels.height=bottom-top+1;
     pixels.getContext("2d").drawImage(masked,left,top,pixels.width,pixels.height,0,0,pixels.width,pixels.height);
     recordHistory();state.layerCounter+=1;const id="pixel-"+state.layerCounter;
-    // Start the cropped layer in the centre of the canvas.
-    const offsetX=Math.round((source.width-pixels.width)/2);
-    const offsetY=Math.round((source.height-pixels.height)/2);
+    // Keep the cut-out aligned with the exact source pixels it came from.
+    // The layer can then be dragged independently without shifting the selection
+    // or being artificially centred/clipped by a half-canvas offset.
+    const offsetX=left;
+    const offsetY=top;
     state.layers.push({id,type:"pixel",name:"Pixel "+state.layerCounter,pixelCanvas:pixels,settings:{...defaults},offsetX,offsetY,referenceWidth:source.width,referenceHeight:source.height,blendMode:"source-over",visible:true,opacity:1});
     state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();
-    notify("Pixel layer created in the centre · original photo stays underneath");
+    notify("Pixel layer created at its original position · drag to move it");
   }
 
     function clearSelection() {
@@ -779,8 +781,21 @@
           .trim()||"prolayerspho-image";
         const fileName=cleanName+"."+extension;
         const exportedFile=new File([blob],fileName,{type:actualMime});
-        // In the Android APK, prefer the native Android share sheet over a
-        // browser download link, which may silently do nothing in WebView.
+        // Android APK builds provide a Capacitor-native file/share bridge.
+        // It writes the image to app cache first, then shares a real file URI;
+        // this avoids WebView blob-downloads silently failing.
+        if(window.ProLayersNativeExport && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+          window.ProLayersNativeExport.saveAndShare(blob,fileName).then(()=>{
+            $("renderStatus").textContent="Export ready · "+canvas.width+" × "+canvas.height;
+            notify("Image exported · choose where to save it");
+          }).catch((error)=>{
+            console.error("Native image export failed",error);
+            downloadExport(blob,fileName);
+            $("renderStatus").textContent="Export prepared · "+canvas.width+" × "+canvas.height;
+          });
+          return;
+        }
+        // Browser fallback: use the system share sheet when supported.
         if(navigator.share&&navigator.canShare&&navigator.canShare({files:[exportedFile]})){
           navigator.share({files:[exportedFile],title:"ProLayers Pho export",text:"Edited image exported from ProLayers Pho"})
             .then(()=>{
