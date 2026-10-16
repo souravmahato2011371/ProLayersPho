@@ -733,6 +733,20 @@
     if(window.matchMedia("(max-width: 760px), (orientation: portrait) and (pointer: coarse)").matches) $("propertiesPanel").classList.add("mobile-open");
   }
 
+
+  function downloadExport(blob,fileName) {
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download=fileName;
+    link.rel="noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    notify("Export requested · check your Downloads");
+  }
+
   function exportImage() {
     if (!state.imageElement) { notify("Open a photo before exporting."); return; }
     $("renderStatus").textContent="Preparing full-resolution export…";
@@ -755,8 +769,6 @@
         if(!blob){notify("Export failed. Try a smaller photo.");$("renderStatus").textContent="Export failed";return;}
         const actualMime=blob.type||mime;
         const extension=actualMime==="image/jpeg"?"jpg":actualMime==="image/webp"?"webp":"png";
-        const url=URL.createObjectURL(blob);
-        const link=document.createElement("a");
         const sourceBase=state.fileName.replace(/\.[^.]+$/,"")||"prolayerspho-image";
         const requestedName=($("exportFilename").value||"").trim();
         const cleanName=(requestedName||sourceBase+"-edited")
@@ -765,14 +777,24 @@
           .replace(/\s+/g," ")
           .replace(/[. ]+$/,"")
           .trim()||"prolayerspho-image";
-        link.href=url;
-        link.download=cleanName+"."+extension;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),1500);
-        $("renderStatus").textContent="Exported "+canvas.width+" × "+canvas.height;
-        notify("Export ready · "+extension.toUpperCase());
+        const fileName=cleanName+"."+extension;
+        const exportedFile=new File([blob],fileName,{type:actualMime});
+        // In the Android APK, prefer the native Android share sheet over a
+        // browser download link, which may silently do nothing in WebView.
+        if(navigator.share&&navigator.canShare&&navigator.canShare({files:[exportedFile]})){
+          navigator.share({files:[exportedFile],title:"ProLayers Pho export",text:"Edited image exported from ProLayers Pho"})
+            .then(()=>{
+              $("renderStatus").textContent="Ready to save · "+canvas.width+" × "+canvas.height;
+              notify("Choose an app to save your image");
+            })
+            .catch((error)=>{
+              if(error&&error.name==="AbortError"){notify("Export cancelled");return;}
+              downloadExport(blob,fileName);
+            });
+          return;
+        }
+        downloadExport(blob,fileName);
+        $("renderStatus").textContent="Export prepared · "+canvas.width+" × "+canvas.height;
       },mime,quality);
     });
   }
