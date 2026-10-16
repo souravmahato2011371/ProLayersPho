@@ -1,0 +1,16 @@
+{
+  "name": "prolayerspho",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ProLayers Pho photo editor",
+  "scripts": {
+    "build": "mkdir -p www && cp index.html style.css script.js tool-library.js www/"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0"
+  }
+}
