@@ -139,8 +139,29 @@
   }
   function addAreaLayer() {
     if(!state.imageElement||!state.selectionMask){notify("Select an area first.");return;}
+    // Store only the selected mask bounds, not a full-canvas mask full of
+    // transparent pixels. A full-canvas mask made moved layers appear to hit
+    // a centre barrier because its transparent margins were being translated
+    // and clipped along with the actual selected region.
+    const sourceMask=state.selectionMask;
+    const maskContext=sourceMask.getContext("2d",{willReadFrequently:true});
+    const frame=maskContext.getImageData(0,0,sourceMask.width,sourceMask.height).data;
+    let left=sourceMask.width,top=sourceMask.height,right=-1,bottom=-1;
+    for(let y=0;y<sourceMask.height;y++){
+      for(let x=0;x<sourceMask.width;x++){
+        if(frame[(y*sourceMask.width+x)*4+3]>0){
+          if(x<left)left=x;if(x>right)right=x;if(y<top)top=y;if(y>bottom)bottom=y;
+        }
+      }
+    }
+    if(right<left||bottom<top){notify("The selected area is empty. Select an area again.");return;}
+    const croppedMask=document.createElement("canvas");
+    croppedMask.width=right-left+1;croppedMask.height=bottom-top+1;
+    croppedMask.getContext("2d").drawImage(sourceMask,left,top,croppedMask.width,croppedMask.height,0,0,croppedMask.width,croppedMask.height);
     recordHistory();state.layerCounter+=1;const id="area-"+state.layerCounter;
-    state.layers.push({id,type:"adjustment",name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:cloneCanvas(state.selectionMask),offsetX:0,offsetY:0,referenceWidth:previewCanvas.width,referenceHeight:previewCanvas.height,blendMode:"source-over",visible:true,opacity:1});
+    state.layers.push({id,type:"adjustment",name:"Area "+state.layerCounter,settings:{...defaults},maskCanvas:croppedMask,offsetX:left,offsetY:top,referenceWidth:sourceMask.width,referenceHeight:sourceMask.height,blendMode:"source-over",visible:true,opacity:1});
+    // The editable selection is cleared independently; the layer owns its
+    // cropped mask and can be moved without mutating any selection state.
     state.activeLayerId=id;clearSelection();renderLayerList();syncControls();schedulePreview();notify("Area adjustment layer added");
   }
   function createPixelLayerFromSelection() {
